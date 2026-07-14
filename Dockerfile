@@ -47,10 +47,9 @@ RUN set -eux; \
     }; \
     install_yum() { \
         rm -f /etc/yum.repos.d/*.repo; \
-        printf '[openeuler]\nname=openEuler 20.03 LTS\nbaseurl=https://repo.openeuler.org/openEuler-20.03-LTS/OS/aarch64/\nenabled=1\ngpgcheck=0\n' \
+        printf '[openeuler]\nname=openEuler 22.03 LTS\nbaseurl=https://repo.openeuler.org/openEuler-22.03-LTS/OS/aarch64/\nenabled=1\ngpgcheck=0\n' \
             > /etc/yum.repos.d/openeuler.repo; \
-        yum remove -y openssl-libs libcurl 2>/dev/null || true; \
-        yum install -y ca-certificates bash coreutils findutils grep sed libcurl curl wget tar gzip xz make gcc gcc-c++ perl \
+        yum install -y --allowerasing ca-certificates bash coreutils findutils grep sed libcurl curl wget tar gzip xz make gcc gcc-c++ perl \
             procps-ng file binutils glibc-devel openssl-libs openssl-devel zlib-devel zlib \
             pcre-devel pcre2-devel; \
         yum clean all; \
@@ -116,10 +115,9 @@ RUN set -eux; \
     }; \
     install_yum() { \
         rm -f /etc/yum.repos.d/*.repo; \
-        printf '[openeuler]\nname=openEuler 20.03 LTS\nbaseurl=https://repo.openeuler.org/openEuler-20.03-LTS/OS/aarch64/\nenabled=1\ngpgcheck=0\n' \
+        printf '[openeuler]\nname=openEuler 22.03 LTS\nbaseurl=https://repo.openeuler.org/openEuler-22.03-LTS/OS/aarch64/\nenabled=1\ngpgcheck=0\n' \
             > /etc/yum.repos.d/openeuler.repo; \
-        yum remove -y openssl-libs 2>/dev/null || true; \
-        yum install -y ca-certificates bash coreutils findutils grep sed procps-ng file binutils openssl-libs zlib pcre pcre2; \
+        yum install -y --allowerasing ca-certificates bash coreutils findutils grep sed procps-ng file binutils openssl-libs zlib pcre pcre2; \
         yum clean all; \
     }; \
     if command -v apt-get >/dev/null 2>&1; then install_apt; \
