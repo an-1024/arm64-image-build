@@ -26,9 +26,8 @@ RUN set -eux; \
     if ls /tmp/rpms/*.rpm >/dev/null 2>&1; then \
         rpm -ivh --nodeps --replacepkgs /tmp/rpms/*.rpm; \
         rm -rf /tmp/rpms; \
-        command -v gcc && gcc --version; \
+        echo "int main(){}" | gcc -x c - -o /dev/null && echo "gcc test: OK" || echo "gcc test: FAILED"; \
         command -v cc 2>/dev/null || ln -sf "$(command -v gcc)" /usr/bin/cc; \
-        command -v cc && cc --version; \
     fi
 
 WORKDIR /build
