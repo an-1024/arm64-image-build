@@ -138,10 +138,40 @@ configure_and_build() {
         fetch_bundled_deps
         configure_args+=(
             "--with-openssl=${BUILD_ROOT}/openssl-${OPENSSL_VERSION}"
+            "--with-openssl-opt=no-apps no-tests"
             "--with-pcre=${BUILD_ROOT}/pcre-${PCRE_VERSION}"
             "--with-zlib=${BUILD_ROOT}/zlib-${ZLIB_VERSION}"
         )
     fi
+
+    # Fix missing kernel headers in UOS base image
+    mkdir -p /usr/include/asm
+    cat > /usr/include/asm/sigcontext.h << 'EOF'
+#ifndef _ASM_SIGCONTEXT_H
+#define _ASM_SIGCONTEXT_H
+#include <asm-generic/sigcontext.h>
+#endif
+EOF
+    cat > /usr/include/asm-generic/sigcontext.h << 'EOF'
+#ifndef _ASM_GENERIC_SIGCONTEXT_H
+#define _ASM_GENERIC_SIGCONTEXT_H
+struct sigcontext {
+    unsigned long fault_address;
+    unsigned long regs[31];
+    unsigned long sp;
+    unsigned long pc;
+    unsigned long pstate;
+};
+#endif
+EOF
+
+    # Patch zlib 1.3.2: gzread.c missing errno.h
+    if [ -f "${BUILD_ROOT}/zlib-${ZLIB_VERSION}/gzread.c" ]; then
+        sed -i '1i #include <errno.h>' "${BUILD_ROOT}/zlib-${ZLIB_VERSION}/gzread.c"
+    fi
+
+    # Set CXX to gcc for PCRE configure (no g++ installed)
+    export CXX=gcc
 
     cd "$NGINX_SRC_DIR"
     echo "=== nginx configure ==="
