@@ -51,7 +51,7 @@ curl -fsSL "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" \
 }
 OPENSSL_VERSION=${OPENSSL_VERSION:-3.0.16}
 PCRE_VERSION=${PCRE_VERSION:-8.45}
-ZLIB_VERSION=${ZLIB_VERSION:-1.3.1}
+ZLIB_VERSION=${ZLIB_VERSION:-1.3.2}
 if [ "${USE_BUNDLED_DEPS:-0}" = "1" ]; then
     curl -fsSL "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz" \
         -o "cache/openssl-${OPENSSL_VERSION}.tar.gz" || {
