@@ -2,7 +2,7 @@ ARG BASE_IMAGE=registry.uniontech.com/uos-server-base/uos-server-20-1070u1e:late
 ARG NGINX_VERSION=1.30.3
 ARG REDIS_VERSION=7.4.9
 
-FROM arm64v8/ubuntu:20.04 AS builder
+FROM ${BASE_IMAGE} AS builder
 
 ARG NGINX_VERSION
 ARG REDIS_VERSION
@@ -19,17 +19,19 @@ ENV NGINX_VERSION=${NGINX_VERSION} \
     PCRE_VERSION=${PCRE_VERSION} \
     ZLIB_VERSION=${ZLIB_VERSION}
 
+# Pre-downloaded RPMs (from host before docker build), installed with --nodeps
+# to avoid the missing kernel-headers dependency in openEuler 20.03 repo.
+COPY cache/rpms/ /tmp/rpms/
 RUN set -eux; \
-    apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        ca-certificates curl wget tar gzip xz-utils make gcc g++ perl \
-        libc6-dev libssl-dev zlib1g-dev libpcre3-dev libpcre2-dev; \
-    rm -rf /var/lib/apt/lists/*
+    if ls /tmp/rpms/*.rpm >/dev/null 2>&1; then \
+        rpm -ivh --nodeps --replacepkgs /tmp/rpms/*.rpm; \
+        rm -rf /tmp/rpms; \
+    fi
 
 WORKDIR /build
 
 # Pre-downloaded source archives (from host before docker build)
-COPY cache/ /build/
+COPY cache/*.tar.gz /build/
 
 COPY scripts/build-nginx.sh /usr/local/bin/build-nginx.sh
 RUN chmod +x /usr/local/bin/build-nginx.sh && /usr/local/bin/build-nginx.sh
