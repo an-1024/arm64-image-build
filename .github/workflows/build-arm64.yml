@@ -1,0 +1,87 @@
+name: Build ARM64 Runtime
+
+on:
+  workflow_dispatch:
+    inputs:
+      use_bundled_deps:
+        description: Build OpenSSL, PCRE, and zlib from source inside the UOS builder stage
+        required: true
+        default: "0"
+        type: choice
+        options:
+          - "0"
+          - "1"
+  push:
+    branches:
+      - main
+    paths:
+      - Dockerfile
+      - entrypoint.sh
+      - docker-compose.yml
+      - nginx/**
+      - redis/**
+      - scripts/**
+      - .github/workflows/build-arm64.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - Dockerfile
+      - entrypoint.sh
+      - docker-compose.yml
+      - nginx/**
+      - redis/**
+      - scripts/**
+      - .github/workflows/build-arm64.yml
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: uos1070u1-java21-redis7-nginx1.31.2-arm64:v1
+  BASE_IMAGE: registry.uniontech.com/uos-server-base/uos-server-20-1070u1e:latest
+  NGINX_VERSION: "1.31.2"
+  REDIS_VERSION: "7.4.9"
+  USE_BUNDLED_DEPS: ${{ github.event_name == 'workflow_dispatch' && inputs.use_bundled_deps || '0' }}
+  UNIONTECH_REGISTRY_USERNAME: ${{ secrets.UNIONTECH_REGISTRY_USERNAME }}
+  UNIONTECH_REGISTRY_PASSWORD: ${{ secrets.UNIONTECH_REGISTRY_PASSWORD }}
+
+jobs:
+  build:
+    name: Build and verify ARM64 image
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Login to UnionTech registry
+        if: env.UNIONTECH_REGISTRY_USERNAME != '' && env.UNIONTECH_REGISTRY_PASSWORD != ''
+        uses: docker/login-action@v3
+        with:
+          registry: registry.uniontech.com
+          username: ${{ env.UNIONTECH_REGISTRY_USERNAME }}
+          password: ${{ env.UNIONTECH_REGISTRY_PASSWORD }}
+
+      - name: Build, verify, and export artifacts
+        env:
+          ALLOW_NON_ARM64_BUILD: "1"
+        run: |
+          chmod +x entrypoint.sh scripts/*.sh
+          ./scripts/build-arm64.sh
+
+      - name: Upload runtime artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: uos1070u1-runtime-arm64
+          path: |
+            artifacts/*.tar.gz
+            artifacts/dependency-audit/**
+          if-no-files-found: error
+          retention-days: 14

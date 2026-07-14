@@ -1,0 +1,128 @@
+name: Security Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      use_bundled_deps:
+        description: Build OpenSSL, PCRE, and zlib from source inside the UOS builder stage
+        required: true
+        default: "0"
+        type: choice
+        options:
+          - "0"
+          - "1"
+  push:
+    branches:
+      - main
+    paths:
+      - Dockerfile
+      - entrypoint.sh
+      - nginx/**
+      - redis/**
+      - scripts/**
+      - .github/workflows/security-scan.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - Dockerfile
+      - entrypoint.sh
+      - nginx/**
+      - redis/**
+      - scripts/**
+      - .github/workflows/security-scan.yml
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: uos1070u1-java21-redis7-nginx1.31.2-arm64:v1
+  BASE_IMAGE: registry.uniontech.com/uos-server-base/uos-server-20-1070u1e:latest
+  NGINX_VERSION: "1.31.2"
+  REDIS_VERSION: "7.4.9"
+  USE_BUNDLED_DEPS: ${{ github.event_name == 'workflow_dispatch' && inputs.use_bundled_deps || '0' }}
+  UNIONTECH_REGISTRY_USERNAME: ${{ secrets.UNIONTECH_REGISTRY_USERNAME }}
+  UNIONTECH_REGISTRY_PASSWORD: ${{ secrets.UNIONTECH_REGISTRY_PASSWORD }}
+
+jobs:
+  scan:
+    name: Build and scan ARM64 image
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Login to UnionTech registry
+        if: env.UNIONTECH_REGISTRY_USERNAME != '' && env.UNIONTECH_REGISTRY_PASSWORD != ''
+        uses: docker/login-action@v3
+        with:
+          registry: registry.uniontech.com
+          username: ${{ env.UNIONTECH_REGISTRY_USERNAME }}
+          password: ${{ env.UNIONTECH_REGISTRY_PASSWORD }}
+
+      - name: Build image
+        run: |
+          docker build \
+            --platform linux/arm64 \
+            --build-arg BASE_IMAGE="$BASE_IMAGE" \
+            --build-arg NGINX_VERSION="$NGINX_VERSION" \
+            --build-arg REDIS_VERSION="$REDIS_VERSION" \
+            --build-arg USE_BUNDLED_DEPS="$USE_BUNDLED_DEPS" \
+            -t "$IMAGE" \
+            .
+
+      - name: Verify image
+        run: |
+          chmod +x scripts/*.sh
+          ./scripts/verify.sh
+
+      - name: Prepare scan output
+        run: mkdir -p artifacts/security-scan
+
+      - name: Generate Trivy JSON report
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE }}
+          format: json
+          output: artifacts/security-scan/trivy-results.json
+          severity: HIGH,CRITICAL
+          vuln-type: os,library
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Generate Trivy SARIF report
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE }}
+          format: sarif
+          output: artifacts/security-scan/trivy-results.sarif
+          severity: HIGH,CRITICAL
+          vuln-type: os,library
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Enforce Trivy vulnerability policy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE }}
+          format: table
+          severity: HIGH,CRITICAL
+          vuln-type: os,library
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Upload scan reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uos1070u1-security-scan
+          path: artifacts/security-scan/**
+          if-no-files-found: warn
+          retention-days: 14
