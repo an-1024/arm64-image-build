@@ -145,13 +145,44 @@ configure_and_build() {
 
     cd "$NGINX_SRC_DIR"
     echo "=== nginx configure ==="
-    # Cross-build: patch auto/options to use aarch64 type sizes directly,
-    # bypassing the broken autotest binary execution under QEMU
-    sed -i 's/NGX_SIZEOF_INT=0/NGX_SIZEOF_INT=4/' auto/options
-    sed -i 's/NGX_SIZEOF_LONG=0/NGX_SIZEOF_LONG=8/' auto/options
-    sed -i 's/NGX_SIZEOF_LONG_LONG=0/NGX_SIZEOF_LONG_LONG=8/' auto/options
-    sed -i 's/NGX_SIZEOF_PTR=0/NGX_SIZEOF_PTR=8/' auto/options
-    sed -i 's/NGX_PTR_SIZE=0/NGX_PTR_SIZE=8/' auto/options
+    # Cross-build: replace auto/types/sizeof with hardcoded aarch64 values.
+    # Under QEMU the test binary cannot execute, so configure can't detect type sizes.
+    cat > auto/types/sizeof << 'SIZEOFEOF'
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+echo $ngx_n "checking for $ngx_type size ...$ngx_c"
+
+cat << END >> $NGX_AUTOCONF_ERR
+----------------------------------------
+checking for $ngx_type size
+END
+
+ngx_size=
+case "$ngx_type" in
+    "int")          ngx_size=4 ;;
+    "long")         ngx_size=8 ;;
+    "long long")   ngx_size=8 ;;
+    "void *")       ngx_size=8 ;;
+    "sig_atomic_t") ngx_size=4 ;;
+    "size_t")       ngx_size=8 ;;
+    "off_t")        ngx_size=8 ;;
+    "time_t")       ngx_size=8 ;;
+    *)              ngx_size=4 ;;
+esac
+echo " $ngx_size bytes"
+
+case $ngx_size in
+    4)
+        ngx_max_value=2147483647
+        ngx_max_len='(sizeof("-2147483648") - 1)'
+    ;;
+    8)
+        ngx_max_value=9223372036854775807LL
+        ngx_max_len='(sizeof("-9223372036854775808") - 1)'
+    ;;
+esac
+SIZEOFEOF
     ./configure "${configure_args[@]}"
 
     echo "=== nginx build ==="
