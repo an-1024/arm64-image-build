@@ -28,6 +28,8 @@ RUN set -eux; \
         rm -rf /tmp/rpms; \
         echo "int main(){}" | gcc -x c - -o /dev/null && echo "gcc test: OK" || echo "gcc test: FAILED"; \
         command -v cc 2>/dev/null || ln -sf "$(command -v gcc)" /usr/bin/cc; \
+        mkdir -p /usr/include/linux; \
+        printf '#ifndef _LINUX_LIMITS_H\n#define _LINUX_LIMITS_H\n\n#define NR_OPEN 1024\n#define NGROUPS_MAX 65536\n#define ARG_MAX 131072\n#define LINK_MAX 127\n#define MAX_CANON 255\n#define MAX_INPUT 255\n#define NAME_MAX 255\n#define PATH_MAX 4096\n#define PIPE_BUF 4096\n#define RTSIG_MAX 32\n\n#endif\n' > /usr/include/linux/limits.h; \
     fi
 
 WORKDIR /build
