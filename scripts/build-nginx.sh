@@ -20,14 +20,23 @@ exec > >(tee "$log_file") 2>&1
 download() {
     local url=$1
     local output=$2
-    if command -v curl >/dev/null 2>&1; then
-        curl -fsSL "$url" -o "$output"
-    elif command -v wget >/dev/null 2>&1; then
-        wget -q "$url" -O "$output"
-    else
-        echo "curl or wget is required" >&2
-        exit 1
-    fi
+    local attempts=${3:-3}
+    local delay=10
+    local i
+    for ((i = 1; i <= attempts; i++)); do
+        if command -v curl >/dev/null 2>&1; then
+            if curl -fsSL "$url" -o "$output"; then return 0; fi
+        elif command -v wget >/dev/null 2>&1; then
+            if wget -q "$url" -O "$output"; then return 0; fi
+        else
+            echo "curl or wget is required" >&2
+            exit 1
+        fi
+        echo "Download failed (attempt $i/$attempts), retrying in ${delay}s..." >&2
+        [ "$i" -lt "$attempts" ] && sleep "$delay"
+    done
+    echo "Failed to download $url after $attempts attempts" >&2
+    return 1
 }
 
 package_version() {
