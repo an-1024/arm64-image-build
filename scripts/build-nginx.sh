@@ -131,6 +131,7 @@ configure_and_build() {
         "--with-http_v2_module"
         "--with-pcre-jit"
         "--with-threads"
+        "--with-cc=gcc"
     )
 
     if [ "$USE_BUNDLED_DEPS" = "1" ]; then
