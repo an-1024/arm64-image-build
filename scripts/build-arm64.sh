@@ -80,7 +80,10 @@ RPM_LIST=(
     cpp-7.3.0-20190804.h31.oe1.aarch64.rpm
     gcc-7.3.0-20190804.h31.oe1.aarch64.rpm
     glibc-devel-2.28-36.oe1.aarch64.rpm
+    gmp-6.1.2-10.oe1.aarch64.rpm
+    libmpc-1.1.0-3.oe1.aarch64.rpm
     make-4.2.1-15.oe1.aarch64.rpm
+    mpfr-3.1.6-3.oe1.aarch64.rpm
     tar-1.30-11.oe1.aarch64.rpm
 )
 for rpm in "${RPM_LIST[@]}"; do
