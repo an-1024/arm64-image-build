@@ -63,7 +63,7 @@ if [ "${USE_BUNDLED_DEPS:-0}" = "1" ]; then
         echo "Failed to download pcre source" >&2
         exit 1
     }
-    curl -fsSL "https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz" \
+    curl -fsSL "https://github.com/madler/zlib/archive/refs/tags/v${ZLIB_VERSION}.tar.gz" \
         -o "cache/zlib-${ZLIB_VERSION}.tar.gz" || {
         echo "Failed to download zlib source" >&2
         exit 1

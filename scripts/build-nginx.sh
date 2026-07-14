@@ -113,7 +113,7 @@ fetch_bundled_deps() {
     if [ -f "zlib-${ZLIB_VERSION}.tar.gz" ]; then
         echo "Using pre-downloaded zlib..."
     else
-        download "https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz" "zlib-${ZLIB_VERSION}.tar.gz"
+        download "https://github.com/madler/zlib/archive/refs/tags/v${ZLIB_VERSION}.tar.gz" "zlib-${ZLIB_VERSION}.tar.gz"
     fi
     tar -xzf "zlib-${ZLIB_VERSION}.tar.gz"
 }
