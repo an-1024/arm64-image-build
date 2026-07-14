@@ -132,7 +132,6 @@ configure_and_build() {
         "--with-pcre-jit"
         "--with-threads"
         "--with-cc=gcc"
-        "--with-cc-opt=-DNGX_SIZEOF_INT=4 -DNGX_SIZEOF_LONG=8"
     )
 
     if [ "$USE_BUNDLED_DEPS" = "1" ]; then
@@ -146,9 +145,13 @@ configure_and_build() {
 
     cd "$NGINX_SRC_DIR"
     echo "=== nginx configure ==="
-    # Cross-build: replace autotest type detection with aarch64 defaults
-    # to bypass QEMU test binary execution issues
-    sed -i 's/ngx_size=`$NGX_AUTOTEST`/ngx_size=4; case $ngx_type in long|"size_t") ngx_size=8;; esac/' auto/types/sizeof
+    # Cross-build: patch auto/options to use aarch64 type sizes directly,
+    # bypassing the broken autotest binary execution under QEMU
+    sed -i 's/NGX_SIZEOF_INT=0/NGX_SIZEOF_INT=4/' auto/options
+    sed -i 's/NGX_SIZEOF_LONG=0/NGX_SIZEOF_LONG=8/' auto/options
+    sed -i 's/NGX_SIZEOF_LONG_LONG=0/NGX_SIZEOF_LONG_LONG=8/' auto/options
+    sed -i 's/NGX_SIZEOF_PTR=0/NGX_SIZEOF_PTR=8/' auto/options
+    sed -i 's/NGX_PTR_SIZE=0/NGX_PTR_SIZE=8/' auto/options
     ./configure "${configure_args[@]}"
 
     echo "=== nginx build ==="
