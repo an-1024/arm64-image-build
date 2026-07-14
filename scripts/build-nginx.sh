@@ -96,13 +96,25 @@ fetch_nginx() {
 
 fetch_bundled_deps() {
     cd "$BUILD_ROOT"
-    download "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz" "openssl-${OPENSSL_VERSION}.tar.gz"
+    if [ -f "openssl-${OPENSSL_VERSION}.tar.gz" ]; then
+        echo "Using pre-downloaded openssl..."
+    else
+        download "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz" "openssl-${OPENSSL_VERSION}.tar.gz"
+    fi
     tar -xzf "openssl-${OPENSSL_VERSION}.tar.gz"
 
-    download "https://downloads.sourceforge.net/project/pcre/pcre/${PCRE_VERSION}/pcre-${PCRE_VERSION}.tar.gz" "pcre-${PCRE_VERSION}.tar.gz"
+    if [ -f "pcre-${PCRE_VERSION}.tar.gz" ]; then
+        echo "Using pre-downloaded pcre..."
+    else
+        download "https://downloads.sourceforge.net/project/pcre/pcre/${PCRE_VERSION}/pcre-${PCRE_VERSION}.tar.gz" "pcre-${PCRE_VERSION}.tar.gz"
+    fi
     tar -xzf "pcre-${PCRE_VERSION}.tar.gz"
 
-    download "https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz" "zlib-${ZLIB_VERSION}.tar.gz"
+    if [ -f "zlib-${ZLIB_VERSION}.tar.gz" ]; then
+        echo "Using pre-downloaded zlib..."
+    else
+        download "https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz" "zlib-${ZLIB_VERSION}.tar.gz"
+    fi
     tar -xzf "zlib-${ZLIB_VERSION}.tar.gz"
 }
 

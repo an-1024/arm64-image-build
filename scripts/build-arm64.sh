@@ -43,11 +43,32 @@ pull_image() {
 }
 
 mkdir -p cache
-echo "Downloading nginx ${NGINX_VERSION} source on host..."
-curl -fsSL "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" -o "cache/nginx-${NGINX_VERSION}.tar.gz" || {
+echo "Downloading source archives on host..."
+curl -fsSL "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" \
+    -o "cache/nginx-${NGINX_VERSION}.tar.gz" || {
     echo "Failed to download nginx source" >&2
     exit 1
 }
+OPENSSL_VERSION=${OPENSSL_VERSION:-3.0.16}
+PCRE_VERSION=${PCRE_VERSION:-8.45}
+ZLIB_VERSION=${ZLIB_VERSION:-1.3.1}
+if [ "${USE_BUNDLED_DEPS:-0}" = "1" ]; then
+    curl -fsSL "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz" \
+        -o "cache/openssl-${OPENSSL_VERSION}.tar.gz" || {
+        echo "Failed to download openssl source" >&2
+        exit 1
+    }
+    curl -fsSL "https://downloads.sourceforge.net/project/pcre/pcre/${PCRE_VERSION}/pcre-${PCRE_VERSION}.tar.gz" \
+        -o "cache/pcre-${PCRE_VERSION}.tar.gz" || {
+        echo "Failed to download pcre source" >&2
+        exit 1
+    }
+    curl -fsSL "https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz" \
+        -o "cache/zlib-${ZLIB_VERSION}.tar.gz" || {
+        echo "Failed to download zlib source" >&2
+        exit 1
+    }
+fi
 
 pull_image "$BASE_IMAGE"
 docker build \
