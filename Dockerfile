@@ -49,7 +49,7 @@ RUN set -eux; \
         rm -f /etc/yum.repos.d/*.repo; \
         printf '[openeuler]\nname=openEuler 20.03 LTS\nbaseurl=https://repo.openeuler.org/openEuler-20.03-LTS/OS/aarch64/\nenabled=1\ngpgcheck=0\n' \
             > /etc/yum.repos.d/openeuler.repo; \
-        yum install -y --allowerasing make gcc gcc-c++ binutils; \
+        yum install -y --allowerasing make gcc gcc-c++ binutils tar gzip; \
         yum clean all; \
     }; \
     if command -v apt-get >/dev/null 2>&1; then install_apt; \
