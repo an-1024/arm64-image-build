@@ -39,7 +39,7 @@ on:
 
 permissions:
   contents: read
-  packages: read
+  packages: write
 
 env:
   IMAGE: uos1070u1-java21-redis7-nginx1.31.2-arm64:v1
