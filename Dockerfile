@@ -33,9 +33,9 @@ RUN set -eux; \
     install_apt() { \
         rm -f /etc/apt/sources.list.d/*.list; \
         printf '%s\n' \
-            'deb http://archive.debian.org/debian buster main' \
-            'deb http://archive.debian.org/debian buster-updates main' \
-            'deb http://archive.debian.org/debian-security buster/updates main' \
+            'deb [trusted=yes] http://archive.debian.org/debian buster main' \
+            'deb [trusted=yes] http://archive.debian.org/debian buster-updates main' \
+            'deb [trusted=yes] http://archive.debian.org/debian-security buster/updates main' \
             > /etc/apt/sources.list; \
         printf '%s\n' 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until; \
         apt-get update; \
@@ -100,9 +100,9 @@ RUN set -eux; \
     install_apt() { \
         rm -f /etc/apt/sources.list.d/*.list; \
         printf '%s\n' \
-            'deb http://archive.debian.org/debian buster main' \
-            'deb http://archive.debian.org/debian buster-updates main' \
-            'deb http://archive.debian.org/debian-security buster/updates main' \
+            'deb [trusted=yes] http://archive.debian.org/debian buster main' \
+            'deb [trusted=yes] http://archive.debian.org/debian buster-updates main' \
+            'deb [trusted=yes] http://archive.debian.org/debian-security buster/updates main' \
             > /etc/apt/sources.list; \
         printf '%s\n' 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until; \
         apt-get update; \
