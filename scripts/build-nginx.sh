@@ -145,7 +145,7 @@ configure_and_build() {
     fi
 
     # Fix missing kernel headers in UOS base image
-    mkdir -p /usr/include/asm
+    mkdir -p /usr/include/asm /usr/include/asm-generic
     cat > /usr/include/asm/sigcontext.h << 'EOF'
 #ifndef _ASM_SIGCONTEXT_H
 #define _ASM_SIGCONTEXT_H
