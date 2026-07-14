@@ -2,17 +2,7 @@ ARG BASE_IMAGE=registry.uniontech.com/uos-server-base/uos-server-20-1070u1e:late
 ARG NGINX_VERSION=1.30.3
 ARG REDIS_VERSION=7.4.9
 
-FROM ${BASE_IMAGE} AS builder
-
-RUN set -eu; \
-    : >> /etc/passwd; \
-    : >> /etc/group; \
-    if ! (while IFS=: read -r name rest; do [ "$name" = "root" ] && exit 0; done < /etc/passwd; exit 1); then \
-        printf 'root:x:0:0:root:/root:/bin/bash\n' >> /etc/passwd; \
-    fi; \
-    if ! (while IFS=: read -r name rest; do [ "$name" = "root" ] && exit 0; done < /etc/group; exit 1); then \
-        printf 'root:x:0:\n' >> /etc/group; \
-    fi
+FROM arm64v8/ubuntu:20.04 AS builder
 
 ARG NGINX_VERSION
 ARG REDIS_VERSION
@@ -30,37 +20,15 @@ ENV NGINX_VERSION=${NGINX_VERSION} \
     ZLIB_VERSION=${ZLIB_VERSION}
 
 RUN set -eux; \
-    install_apt() { \
-        rm -f /etc/apt/sources.list.d/*.list; \
-        printf '%s\n' \
-            'deb [trusted=yes] http://archive.debian.org/debian buster main' \
-            'deb [trusted=yes] http://archive.debian.org/debian buster-updates main' \
-            'deb [trusted=yes] http://archive.debian.org/debian-security buster/updates main' \
-            > /etc/apt/sources.list; \
-        printf '%s\n' 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until; \
-        apt-get update; \
-        DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            ca-certificates bash coreutils findutils grep sed curl wget tar gzip xz-utils make gcc g++ perl \
-            procps file binutils libc6-dev libssl-dev zlib1g-dev \
-            libpcre3-dev libpcre2-dev; \
-        rm -rf /var/lib/apt/lists/*; \
-    }; \
-    install_yum() { \
-        rm -f /etc/yum.repos.d/*.repo; \
-        printf '[openeuler]\nname=openEuler 20.03 LTS\nbaseurl=https://repo.openeuler.org/openEuler-20.03-LTS/OS/aarch64/\nenabled=1\ngpgcheck=0\n' \
-            > /etc/yum.repos.d/openeuler.repo; \
-        yum install -y --allowerasing make gcc binutils tar gzip; \
-        yum clean all; \
-    }; \
-    if command -v apt-get >/dev/null 2>&1; then install_apt; \
-    elif command -v dnf >/dev/null 2>&1; then yum() { dnf "$@"; }; install_yum; \
-    elif command -v yum >/dev/null 2>&1; then install_yum; \
-    else echo "Unsupported package manager in UOS base image" >&2; exit 1; fi; \
-    update-ca-certificates >/dev/null 2>&1 || true
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        ca-certificates curl wget tar gzip xz-utils make gcc g++ perl \
+        libc6-dev libssl-dev zlib1g-dev libpcre3-dev libpcre2-dev; \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
 
-# Pre-downloaded nginx source (from host before docker build)
+# Pre-downloaded source archives (from host before docker build)
 COPY cache/ /build/
 
 COPY scripts/build-nginx.sh /usr/local/bin/build-nginx.sh
@@ -83,49 +51,30 @@ RUN set -eux; \
 
 FROM ${BASE_IMAGE} AS runtime
 
-RUN set -eu; \
-    : >> /etc/passwd; \
-    : >> /etc/group; \
-    if ! (while IFS=: read -r name rest; do [ "$name" = "root" ] && exit 0; done < /etc/passwd; exit 1); then \
-        printf 'root:x:0:0:root:/root:/bin/bash\n' >> /etc/passwd; \
-    fi; \
-    if ! (while IFS=: read -r name rest; do [ "$name" = "root" ] && exit 0; done < /etc/group; exit 1); then \
-        printf 'root:x:0:\n' >> /etc/group; \
-    fi
-
 ARG NGINX_VERSION
 ARG REDIS_VERSION
 
 LABEL org.opencontainers.image.title="UOS 1070U1 E ARM64 Java21 Redis7 Nginx runtime" \
       org.opencontainers.image.version="v1" \
-      org.opencontainers.image.base.name="registry.uniontech.com/uos-server-base/uos-server-20-1070u1e:latest" \
-      org.opencontainers.image.description="UOS 1070U1 E ARM64 enterprise runtime with Java 21, Redis 7.4.9, and nginx 1.31.2"
+      org.opencontainers.image.base.name="${BASE_IMAGE}" \
+      org.opencontainers.image.description="UOS 1070U1 E ARM64 enterprise runtime with Java 21, Redis 7.4.9, and nginx ${NGINX_VERSION}"
 
+# Runtime deps: ca-certificates for curl/health checks, libs for Redis/nginx
+# With USE_BUNDLED_DEPS=1, nginx statically links pcre/zlib/openssl,
+# so no system pcre/zlib/openssl packages needed at runtime.
 RUN set -eux; \
-    install_apt() { \
+    if command -v apt-get >/dev/null 2>&1; then \
         rm -f /etc/apt/sources.list.d/*.list; \
-        printf '%s\n' \
-            'deb [trusted=yes] http://archive.debian.org/debian buster main' \
-            'deb [trusted=yes] http://archive.debian.org/debian buster-updates main' \
-            'deb [trusted=yes] http://archive.debian.org/debian-security buster/updates main' \
+        printf 'deb [trusted=yes] http://archive.debian.org/debian buster main\ndeb [trusted=yes] http://archive.debian.org/debian buster-updates main\n' \
             > /etc/apt/sources.list; \
-        printf '%s\n' 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until; \
+        printf 'Acquire::Check-Valid-Until "false";\n' > /etc/apt/apt.conf.d/99no-check-valid-until; \
         apt-get update; \
         DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            ca-certificates bash coreutils findutils grep sed procps file binutils openssl zlib1g libpcre3 libpcre2-8-0; \
+            ca-certificates bash coreutils findutils grep sed procps file; \
         rm -rf /var/lib/apt/lists/*; \
-    }; \
-    install_yum() { \
-        rm -f /etc/yum.repos.d/*.repo; \
-        printf '[openeuler]\nname=openEuler 20.03 LTS\nbaseurl=https://repo.openeuler.org/openEuler-20.03-LTS/OS/aarch64/\nenabled=1\ngpgcheck=0\n' \
-            > /etc/yum.repos.d/openeuler.repo; \
-        yum install -y --allowerasing pcre pcre2; \
-        yum clean all; \
-    }; \
-    if command -v apt-get >/dev/null 2>&1; then install_apt; \
-    elif command -v dnf >/dev/null 2>&1; then yum() { dnf "$@"; }; install_yum; \
-    elif command -v yum >/dev/null 2>&1; then install_yum; \
-    else echo "Unsupported package manager in UOS base image" >&2; exit 1; fi; \
+    elif command -v yum >/dev/null 2>&1 || command -v dnf >/dev/null 2>&1; then \
+        : # UOS base image already has everything needed; \
+    fi; \
     update-ca-certificates >/dev/null 2>&1 || true
 
 COPY --from=builder /usr/local/nginx /usr/local/nginx
