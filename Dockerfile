@@ -74,8 +74,8 @@ RUN set -eux; \
         DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             ca-certificates bash coreutils findutils grep sed procps file; \
         rm -rf /var/lib/apt/lists/*; \
-    elif command -v yum >/dev/null 2>&1 || command -v dnf >/dev/null 2>&1; then \
-        : # UOS base image already has everything needed; \
+    else \
+        echo "UOS base image, no package install needed"; \
     fi; \
     update-ca-certificates >/dev/null 2>&1 || true
 
