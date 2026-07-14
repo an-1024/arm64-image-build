@@ -46,6 +46,9 @@ RUN set -eux; \
         rm -rf /var/lib/apt/lists/*; \
     }; \
     install_yum() { \
+        rm -f /etc/yum.repos.d/*.repo; \
+        printf '[openeuler]\nname=openEuler 20.03 LTS\nbaseurl=https://repo.openeuler.org/openEuler-20.03-LTS/OS/aarch64/\nenabled=1\ngpgcheck=0\n' \
+            > /etc/yum.repos.d/openeuler.repo; \
         yum install -y ca-certificates bash coreutils findutils grep sed curl wget tar gzip xz make gcc gcc-c++ perl \
             procps-ng file binutils glibc-devel openssl-devel zlib-devel \
             pcre-devel pcre2-devel; \
@@ -111,6 +114,9 @@ RUN set -eux; \
         rm -rf /var/lib/apt/lists/*; \
     }; \
     install_yum() { \
+        rm -f /etc/yum.repos.d/*.repo; \
+        printf '[openeuler]\nname=openEuler 20.03 LTS\nbaseurl=https://repo.openeuler.org/openEuler-20.03-LTS/OS/aarch64/\nenabled=1\ngpgcheck=0\n' \
+            > /etc/yum.repos.d/openeuler.repo; \
         yum install -y ca-certificates bash coreutils findutils grep sed procps-ng file binutils openssl-libs zlib pcre pcre2; \
         yum clean all; \
     }; \
