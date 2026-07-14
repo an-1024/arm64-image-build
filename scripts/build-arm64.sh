@@ -22,7 +22,27 @@ command -v docker >/dev/null 2>&1 || {
 
 mkdir -p "$OUTPUT_DIR"
 
-docker pull "$BASE_IMAGE"
+pull_image() {
+    local image=$1
+    local attempts=${PULL_RETRIES:-3}
+    local delay=${PULL_RETRY_DELAY_SECONDS:-20}
+    local attempt
+
+    for ((attempt = 1; attempt <= attempts; attempt++)); do
+        echo "Pulling base image (${attempt}/${attempts}): ${image}"
+        if docker pull "$image"; then
+            return 0
+        fi
+        if [ "$attempt" -lt "$attempts" ]; then
+            sleep "$delay"
+        fi
+    done
+
+    echo "Failed to pull base image after ${attempts} attempts: ${image}" >&2
+    return 1
+}
+
+pull_image "$BASE_IMAGE"
 docker build \
     --platform linux/arm64 \
     --build-arg BASE_IMAGE="$BASE_IMAGE" \

@@ -123,8 +123,9 @@ Use this path when you do not have a local ARM64 machine:
 1. Push the repository to GitHub.
 2. If the UOS Harbor registry requires login, add repository secrets `UNIONTECH_REGISTRY_USERNAME` and `UNIONTECH_REGISTRY_PASSWORD`.
 3. Open `Actions` -> `Build ARM64 Runtime` -> `Run workflow`.
-4. Keep `use_bundled_deps` as `0` for UOS system dependencies, or set it to `1` to compile OpenSSL/PCRE/zlib from source inside the UOS builder stage.
-5. Download the `uos1070u1-runtime-arm64` artifact after the workflow succeeds.
+4. Keep `base_image` as the default UOS image if GitHub-hosted runners can reach `registry.uniontech.com`, or replace it with a mirrored base image such as `ghcr.io/<owner>/<image>:<tag>`.
+5. Keep `use_bundled_deps` as `0` for UOS system dependencies, or set it to `1` to compile OpenSSL/PCRE/zlib from source inside the UOS builder stage.
+6. Download the `uos1070u1-runtime-arm64` artifact after the workflow succeeds.
 
 The downloaded artifact contains the final image tar:
 
