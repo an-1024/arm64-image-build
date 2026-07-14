@@ -86,7 +86,11 @@ probe_environment() {
 
 fetch_nginx() {
     cd "$BUILD_ROOT"
-    download "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" "nginx-${NGINX_VERSION}.tar.gz"
+    if [ -f "nginx-${NGINX_VERSION}.tar.gz" ]; then
+        echo "Using pre-downloaded nginx source..."
+    else
+        download "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" "nginx-${NGINX_VERSION}.tar.gz"
+    fi
     tar -xzf "nginx-${NGINX_VERSION}.tar.gz"
 }
 

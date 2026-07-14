@@ -42,6 +42,13 @@ pull_image() {
     return 1
 }
 
+mkdir -p cache
+echo "Downloading nginx ${NGINX_VERSION} source on host..."
+curl -fsSL "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" -o "cache/nginx-${NGINX_VERSION}.tar.gz" || {
+    echo "Failed to download nginx source" >&2
+    exit 1
+}
+
 pull_image "$BASE_IMAGE"
 docker build \
     --platform linux/arm64 \
