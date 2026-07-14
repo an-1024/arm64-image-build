@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
       args:
         BASE_IMAGE: registry.uniontech.com/uos-server-base/uos-server-20-1070u1e:latest
-        NGINX_VERSION: 1.31.2
+        NGINX_VERSION: 1.30.3
         REDIS_VERSION: 7.4.9
     platform: linux/arm64
     ports:

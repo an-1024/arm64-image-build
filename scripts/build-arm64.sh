@@ -3,7 +3,7 @@ set -euo pipefail
 
 IMAGE=${IMAGE:-uos1070u1-java21-redis7-nginx1.31.2-arm64:v1}
 BASE_IMAGE=${BASE_IMAGE:-registry.uniontech.com/uos-server-base/uos-server-20-1070u1e:latest}
-NGINX_VERSION=${NGINX_VERSION:-1.31.2}
+NGINX_VERSION=${NGINX_VERSION:-1.30.3}
 REDIS_VERSION=${REDIS_VERSION:-7.4.9}
 USE_BUNDLED_DEPS=${USE_BUNDLED_DEPS:-0}
 OUTPUT_DIR=${OUTPUT_DIR:-artifacts}

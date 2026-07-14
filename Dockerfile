@@ -1,5 +1,5 @@
 ARG BASE_IMAGE=registry.uniontech.com/uos-server-base/uos-server-20-1070u1e:latest
-ARG NGINX_VERSION=1.31.2
+ARG NGINX_VERSION=1.30.3
 ARG REDIS_VERSION=7.4.9
 
 FROM ${BASE_IMAGE} AS builder
