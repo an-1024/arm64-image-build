@@ -146,6 +146,9 @@ configure_and_build() {
 
     cd "$NGINX_SRC_DIR"
     echo "=== nginx configure ==="
+    # Cross-build: replace autotest type detection with aarch64 defaults
+    # to bypass QEMU test binary execution issues
+    sed -i 's/ngx_size=`$NGX_AUTOTEST`/ngx_size=4; case $ngx_type in long|"size_t") ngx_size=8;; esac/' auto/types/sizeof
     ./configure "${configure_args[@]}"
 
     echo "=== nginx build ==="
