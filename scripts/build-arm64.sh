@@ -76,10 +76,12 @@ RPM_BASE_URL="https://repo.openeuler.org/openEuler-20.03-LTS/OS/aarch64/Packages
 RPM_DIR="cache/rpms"
 mkdir -p "$RPM_DIR"
 RPM_LIST=(
-    gcc-7.3.0-20190804.h31.oe1.aarch64.rpm
+    binutils-2.33.1-5.oe1.aarch64.rpm
     cpp-7.3.0-20190804.h31.oe1.aarch64.rpm
+    gcc-7.3.0-20190804.h31.oe1.aarch64.rpm
     glibc-devel-2.28-36.oe1.aarch64.rpm
     make-4.2.1-15.oe1.aarch64.rpm
+    tar-1.30-11.oe1.aarch64.rpm
 )
 for rpm in "${RPM_LIST[@]}"; do
     [ -f "$RPM_DIR/$rpm" ] && continue
