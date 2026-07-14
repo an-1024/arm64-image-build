@@ -19,7 +19,7 @@ ARG REDIS_VERSION
 ARG USE_BUNDLED_DEPS=0
 ARG OPENSSL_VERSION=3.0.16
 ARG PCRE_VERSION=8.45
-ARG ZLIB_VERSION=1.3.1
+ARG ZLIB_VERSION=1.3.2
 ARG JDK_DOWNLOAD_URL=https://api.adoptium.net/v3/binary/latest/21/ga/linux/aarch64/jdk/hotspot/normal/eclipse?project=jdk
 
 ENV NGINX_VERSION=${NGINX_VERSION} \

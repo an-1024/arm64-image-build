@@ -77,6 +77,9 @@ docker build \
     --build-arg NGINX_VERSION="$NGINX_VERSION" \
     --build-arg REDIS_VERSION="$REDIS_VERSION" \
     --build-arg USE_BUNDLED_DEPS="$USE_BUNDLED_DEPS" \
+    --build-arg ZLIB_VERSION="$ZLIB_VERSION" \
+    --build-arg OPENSSL_VERSION="$OPENSSL_VERSION" \
+    --build-arg PCRE_VERSION="$PCRE_VERSION" \
     -t "$IMAGE" \
     .
 
