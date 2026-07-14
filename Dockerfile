@@ -61,7 +61,7 @@ RUN set -eux; \
 WORKDIR /build
 
 # Pre-downloaded nginx source (from host before docker build)
-COPY cache/*.tar.gz /build/ 2>/dev/null || true
+COPY cache/ /build/
 
 COPY scripts/build-nginx.sh /usr/local/bin/build-nginx.sh
 RUN chmod +x /usr/local/bin/build-nginx.sh && /usr/local/bin/build-nginx.sh
