@@ -11,7 +11,7 @@ on:
       use_bundled_deps:
         description: Build OpenSSL, PCRE, and zlib from source inside the UOS builder stage
         required: true
-        default: "0"
+        default: "1"
         type: choice
         options:
           - "0"
@@ -48,7 +48,7 @@ env:
   BASE_IMAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.base_image || 'registry.uniontech.com/uos-server-base/uos-server-20-1070u1e:latest' }}
   NGINX_VERSION: "1.31.2"
   REDIS_VERSION: "7.4.9"
-  USE_BUNDLED_DEPS: ${{ github.event_name == 'workflow_dispatch' && inputs.use_bundled_deps || '0' }}
+  USE_BUNDLED_DEPS: ${{ github.event_name == 'workflow_dispatch' && inputs.use_bundled_deps || '1' }}
   UNIONTECH_REGISTRY_USERNAME: ${{ secrets.UNIONTECH_REGISTRY_USERNAME }}
   UNIONTECH_REGISTRY_PASSWORD: ${{ secrets.UNIONTECH_REGISTRY_PASSWORD }}
 
