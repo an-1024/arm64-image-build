@@ -79,6 +79,7 @@ RPM_LIST=(
     binutils-2.33.1-5.oe1.aarch64.rpm
     cpp-7.3.0-20190804.h31.oe1.aarch64.rpm
     gcc-7.3.0-20190804.h31.oe1.aarch64.rpm
+    gcc-c++-7.3.0-20190804.h31.oe1.aarch64.rpm
     glibc-devel-2.28-36.oe1.aarch64.rpm
     libmpc-1.1.0-3.oe1.aarch64.rpm
     make-4.2.1-15.oe1.aarch64.rpm
