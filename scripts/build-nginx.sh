@@ -183,6 +183,43 @@ case $ngx_size in
     ;;
 esac
 SIZEOFEOF
+    # Cross-build: replace auto/types/typedef with hardcoded aarch64 typedefs.
+    cat > auto/types/typedef << 'TYPEDEFEOF'
+# Copyright (C) Igor Sysoev
+# Copyright (C) Nginx, Inc.
+
+echo $ngx_n "checking for $ngx_type ...$ngx_c"
+
+cat << END >> $NGX_AUTOCONF_ERR
+----------------------------------------
+checking for $ngx_type
+END
+
+ngx_found=no
+
+for ngx_try in $ngx_type $ngx_types
+do
+    echo $ngx_n " $ngx_try$ngx_c"
+    if [ $ngx_try = $ngx_type ]; then
+        echo " found"
+        ngx_found=yes
+    else
+        echo ", $ngx_try used"
+        ngx_found=$ngx_try
+    fi
+    break
+done
+
+if [ $ngx_found = no ]; then
+    echo
+    echo "$0: error: can not define $ngx_type"
+    exit 1
+fi
+
+if [ $ngx_found != yes ]; then
+    echo "typedef $ngx_found  $ngx_type;"   >> $NGX_AUTO_CONFIG_H
+fi
+TYPEDEFEOF
     ./configure "${configure_args[@]}"
 
     echo "=== nginx build ==="
