@@ -127,6 +127,7 @@ configure_and_build() {
         "--lock-path=/run/nginx.lock"
         "--http-log-path=/logs/nginx.access.log"
         "--error-log-path=/logs/nginx.error.log"
+        "--crossbuild=linux:aarch64"
         "--with-http_ssl_module"
         "--with-http_v2_module"
         "--with-pcre-jit"
