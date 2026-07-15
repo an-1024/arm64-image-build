@@ -1,3 +1,4 @@
+3f0799c4138d2e9b3fad52a599938464b1b4a2ee
 ARG BASE_IMAGE=ghcr.io/an-1024/uos-server-20-1070u1e-arm64:latest
 ARG NGINX_VERSION=1.26.2
 ARG REDIS_VERSION=7.4.0
@@ -9,7 +10,7 @@ ARG REDIS_VERSION
 ARG BASE_IMAGE
 
 LABEL org.opencontainers.image.title="UOS 1070U1 E ARM64 Java21 Redis7 Nginx LibreOffice runtime" \
-      org.opencontainers.image.version="v2" \
+      org.opencontainers.image.version="v1" \
       org.opencontainers.image.base.name="${BASE_IMAGE}" \
       org.opencontainers.image.description="UOS 1070U1 E ARM64 runtime with Java 21, Redis ${REDIS_VERSION}, nginx ${NGINX_VERSION}, LibreOffice"
 
