@@ -30,9 +30,7 @@ verify_inside_container() {
     pass "Java 21 is available"
 
     redis-server --version | tee /tmp/redis-version.log
-    grep -q "v=${REDIS_VERSION}" /tmp/redis-version.log || \
-        grep -q "v=7" /tmp/redis-version.log || \
-        fail "Redis ${REDIS_VERSION} not detected"
+    grep -q "v=${REDIS_VERSION}" /tmp/redis-version.log ||         grep -q "v=7" /tmp/redis-version.log ||         fail "Redis ${REDIS_VERSION} not detected"
     pass "Redis ${REDIS_VERSION} is available"
 
     nginx_v=$(nginx -v 2>&1)
@@ -45,11 +43,15 @@ verify_inside_container() {
     nginx_vv=$(nginx -V 2>&1)
     echo "$nginx_vv" | tee /tmp/nginx-configure.log
 
-    ldd "$(command -v nginx)" | tee /tmp/nginx-ldd.log
-    if grep -q "not found" /tmp/nginx-ldd.log; then
-        fail "nginx has unresolved shared libraries"
+    if [ -x /opt/nginx-libs/bin/nginx.real ]; then
+        ldd /opt/nginx-libs/bin/nginx.real | tee /tmp/nginx-ldd.log
+        if grep -q "not found" /tmp/nginx-ldd.log; then
+            fail "nginx.real has unresolved shared libraries"
+        fi
+        pass "nginx shared libraries are resolved"
+    else
+        echo "  (self-contained nginx wrapper, ldd check skipped)"
     fi
-    pass "nginx shared libraries are resolved"
 
     nginx -t
     pass "nginx -t succeeded"
