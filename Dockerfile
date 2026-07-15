@@ -15,7 +15,11 @@ LABEL org.opencontainers.image.title="UOS 1070U1 E ARM64 Java21 Redis7 Nginx Lib
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     net-tools procps vim iproute2 iputils-ping curl wget telnet dnsutils \
-    lsof tcpdump 2>/dev/null || true
+    lsof tcpdump unzip zip git jq less tree sysstat strace rsync \
+    htop openssh-client ca-certificates bash-completion file \
+    socat ethtool nmap ltrace iotop 2>/dev/null || true
+
+RUN apt-get update && apt-get install -y libxslt1.1 2>/dev/null || true
 
 # Pre-built nginx and redis from UnionTech (extracted by prepare-packages.sh)
 COPY packages/ /
@@ -38,8 +42,6 @@ RUN set -eux; \
     rm -f /tmp/jdk21.tar.gz
 
 # LibreOffice ARM64 RPMs
-RUN apt-get update && apt-get install -y libxslt1.1 2>/dev/null || true
-
 COPY rpm/ /tmp/rpms/
 RUN set -eux; \
     if ls /tmp/rpms/*.rpm >/dev/null 2>&1; then \
