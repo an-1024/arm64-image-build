@@ -16,18 +16,22 @@ LABEL org.opencontainers.image.title="UOS 1070U1 E ARM64 Java21 Redis7 Nginx Lib
 # Pre-built nginx and redis from UnionTech (extracted by prepare-packages.sh)
 COPY packages/ /
 
-# Install essential tools (UOS minimal image may lack tar, curl, etc.)
-# If no package manager, RPMs will be installed from the packages dir
+# Basic tools + X11 deps RPMs (installed before JDK and LibreOffice)
+COPY x11-deps/ /tmp/x11-deps/
 RUN set -eux; \
-    if command -v yum >/dev/null 2>&1; then \
-        yum install -y tar gzip curl ca-certificates || true; \
-    fi; \
-    if command -v dnf >/dev/null 2>&1; then \
-        dnf install -y tar gzip curl ca-certificates || true; \
-    fi; \
-    # Ensure basic tools exist
-    command -v tar >/dev/null 2>&1 || echo "WARNING: tar not available"; \
-    command -v curl >/dev/null 2>&1 || echo "WARNING: curl not available"
+    if ls /tmp/x11-deps/*.rpm >/dev/null 2>&1; then \
+        rpm -ivh --nodeps --force /tmp/x11-deps/*.rpm; \
+        rm -rf /tmp/x11-deps; \
+    fi
+
+# JDK21 (pre-downloaded by build-arm64.sh)
+COPY jdk21.tar.gz /tmp/jdk21.tar.gz
+RUN set -eux; \
+    mkdir -p /opt/java; \
+    tar -xzf /tmp/jdk21.tar.gz -C /opt/java; \
+    JDK_DIR=$(ls -d /opt/java/*/); \
+    mv "$JDK_DIR" /opt/java/jdk21; \
+    rm -f /tmp/jdk21.tar.gz
 
 # LibreOffice ARM64 RPMs
 COPY rpm/ /tmp/rpms/
@@ -43,23 +47,7 @@ RUN set -eux; \
         fi; \
     fi
 
-# LibreOffice X11 dependencies (pre-downloaded from openEuler 20.03 repo)
-COPY x11-deps/ /tmp/x11-deps/
-RUN set -eux; \
-    if ls /tmp/x11-deps/*.rpm >/dev/null 2>&1; then \
-        rpm -ivh --nodeps --force /tmp/x11-deps/*.rpm; \
-        rm -rf /tmp/x11-deps; \
-    fi
 
-# JDK21
-RUN set -eux; \
-    curl -fsSL -L "https://api.adoptium.net/v3/binary/latest/21/ga/linux/aarch64/jdk/hotspot/normal/eclipse?project=jdk" \
-        -o /tmp/jdk21.tar.gz; \
-    mkdir -p /opt/java; \
-    tar -xzf /tmp/jdk21.tar.gz -C /opt/java; \
-    JDK_DIR=$(ls -d /opt/java/*/); \
-    mv "$JDK_DIR" /opt/java/jdk21; \
-    rm -f /tmp/jdk21.tar.gz
 
 # Config files
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
