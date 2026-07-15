@@ -2,7 +2,7 @@
 set -euo pipefail
 
 IMAGE=${IMAGE:-uos1070u1-java21-redis7-nginx1.31.2-arm64:v1}
-NGINX_VERSION=${NGINX_VERSION:-1.30.3}
+NGINX_VERSION=${NGINX_VERSION:-1.31.2}
 REDIS_VERSION=${REDIS_VERSION:-7.4.9}
 
 fail() {
