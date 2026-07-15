@@ -6,6 +6,7 @@ FROM ${BASE_IMAGE}
 
 ARG NGINX_VERSION
 ARG REDIS_VERSION
+ARG BASE_IMAGE
 
 LABEL org.opencontainers.image.title="UOS 1070U1 E ARM64 Java21 Redis7 Nginx LibreOffice runtime" \
       org.opencontainers.image.version="v2" \
