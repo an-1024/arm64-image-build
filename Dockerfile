@@ -43,7 +43,8 @@ RUN chmod +x /usr/local/bin/build-nginx.sh && /usr/local/bin/build-nginx.sh
 RUN set -eux; \
     curl -fsSL "https://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz" -o redis.tar.gz; \
     tar -xzf redis.tar.gz; \
-    make -C "redis-${REDIS_VERSION}" -j"$(nproc)" BUILD_TLS=yes; \
+    make -C "redis-${REDIS_VERSION}" -j"$(nproc)" BUILD_TLS=yes \
+        CC=gcc CFLAGS="-I/build/openssl-${OPENSSL_VERSION}/include"; \
     make -C "redis-${REDIS_VERSION}" PREFIX=/opt/redis install; \
     /opt/redis/bin/redis-server --version | tee /build-artifacts/redis-version.log
 
