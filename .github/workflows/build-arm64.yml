@@ -66,10 +66,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="runtime-v2-$(date +%Y%m%d%H%M)"
+          TAG="runtime-v2-$(date +%Y%m%d%H%M%S)-${{ github.run_id }}"
           TARBALL=$(ls artifacts/*.tar.gz | head -1)
           echo "Uploading $TARBALL to release $TAG..."
-          gh release create "$TAG" "$TARBALL" \
+          gh release create --clobber "$TAG" "$TARBALL" \
             --title "Runtime v2 ($(date +%Y-%m-%d))" \
             --notes "UOS 1070U1 E ARM64: Java21 + Redis7 + nginx1.26 + LibreOffice25.8" \
             --target "${{ github.sha }}"
