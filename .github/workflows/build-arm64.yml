@@ -20,7 +20,7 @@ on:
       - .github/workflows/build-arm64.yml
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 env:
@@ -61,3 +61,15 @@ jobs:
             artifacts/dependency-audit/**
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload raw tarball to Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="runtime-v2-$(date +%Y%m%d%H%M)"
+          TARBALL=$(ls artifacts/*.tar.gz | head -1)
+          echo "Uploading $TARBALL to release $TAG..."
+          gh release create "$TAG" "$TARBALL" \
+            --title "Runtime v2 ($(date +%Y-%m-%d))" \
+            --notes "UOS 1070U1 E ARM64: Java21 + Redis7 + nginx1.26 + LibreOffice25.8" \
+            --target "${{ github.sha }}"
