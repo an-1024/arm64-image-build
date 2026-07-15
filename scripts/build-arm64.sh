@@ -55,18 +55,27 @@ if [ ! -d packages ] || [ -z "$(ls -A packages 2>/dev/null)" ]; then
             fi
         }
     else
-        echo "gh CLI not available, will use local packages/ or x11-deps/"
-        mkdir -p packages x11-deps
+        echo "gh CLI not available, will use local packages/ or tools/"
+        mkdir -p packages tools
     fi
     if [ -f packages-arm64.tar.gz ]; then
         echo "Extracting packages..."
         tar -xzf packages-arm64.tar.gz
         rm -f packages-arm64.tar.gz
-        # Rename directories to match Dockerfile expectations
         [ -d packages-arm64 ] && mv packages-arm64 packages
         [ -d x11-deps-arm64 ] && mv x11-deps-arm64 x11-deps
     fi
 fi
+
+# Download JDK21 on the host (GitHub runner has network access)
+if [ ! -f jdk21.tar.gz ]; then
+    echo "Downloading JDK21..."
+    curl -fsSL -L -o jdk21.tar.gz \
+        "https://api.adoptium.net/v3/binary/latest/21/ga/linux/aarch64/jdk/hotspot/normal/eclipse?project=jdk" || {
+        echo "JDK download failed, will try inside container"
+    }
+fi
+ls -lh jdk21.tar.gz 2>/dev/null || echo "no jdk21.tar.gz (will download in container)"
 
 # If still no packages, create empty dirs so Docker COPY doesn't fail
 mkdir -p packages x11-deps
