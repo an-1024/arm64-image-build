@@ -2,6 +2,16 @@ ARG BASE_IMAGE=ghcr.io/an-1024/uos-server-20-1070u1e-arm64:latest
 ARG NGINX_VERSION=1.26.2
 ARG REDIS_VERSION=7.4.0
 
+# ===== Stage 1: Download tool packages from Debian buster =====
+FROM debian:buster AS tool-downloader
+RUN apt-get update -qq && apt-get install -y --no-install-recommends curl ca-certificates
+RUN mkdir -p /tools && cd /tmp && \
+    PKGS="net-tools procps vim-common vim-runtime iproute2 iputils-ping curl wget telnet dnsutils lsof tcpdump unzip zip git-man git jq less tree sysstat strace rsync htop openssh-client ca-certificates bash-completion file socat ethtool nmap nmap-common ltrace iotop" && \
+    apt-get update -qq && \
+    apt-get download $(apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances $PKGS 2>/dev/null | grep '^[[:alpha:]]' | sort -u) 2>/dev/null && \
+    cp *.deb /tools/
+
+# ===== Stage 2: Main image =====
 FROM ${BASE_IMAGE}
 
 ARG NGINX_VERSION
@@ -13,14 +23,12 @@ LABEL org.opencontainers.image.title="UOS 1070U1 E ARM64 Java21 Redis7 Nginx Lib
       org.opencontainers.image.base.name="${BASE_IMAGE}" \
       org.opencontainers.image.description="UOS 1070U1 E ARM64 runtime with Java 21, Redis ${REDIS_VERSION}, nginx ${NGINX_VERSION}, LibreOffice"
 
-RUN echo 'deb http://mirrors.tuna.tsinghua.edu.cn/debian bookworm main' > /etc/apt/sources.list && \
-    echo 'deb http://mirrors.tuna.tsinghua.edu.cn/debian bookworm-updates main' >> /etc/apt/sources.list && \
-    echo 'deb http://mirrors.tuna.tsinghua.edu.cn/debian-security bookworm-security main' >> /etc/apt/sources.list && \
-    apt-get update && apt-get install -y --no-install-recommends \
-    net-tools procps vim iproute2 iputils-ping curl wget telnet dnsutils \
-    lsof tcpdump unzip zip git jq less tree sysstat strace rsync \
-    htop openssh-client ca-certificates bash-completion file \
-    socat ethtool nmap ltrace iotop 2>&1 | tail -20 && echo 'TOOLS-INSTALLED-OK' || echo 'TOOLS-INSTALL-FAILED' 
+# Copy and install tool packages via dpkg (no apt dependency)
+COPY --from=tool-downloader /tools/*.deb /tmp/tools-debs/
+RUN set -eux; \
+    dpkg -i --force-depends /tmp/tools-debs/*.deb 2>/dev/null || true; \
+    rm -rf /tmp/tools-debs; \
+    echo "Tools installed via dpkg"
 
 RUN apt-get update && apt-get install -y libxslt1.1 2>/dev/null || true
 
@@ -58,8 +66,6 @@ RUN set -eux; \
         fi; \
     fi
 
-
-
 # Config files
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY redis/redis.conf /etc/redis/redis.conf
@@ -91,4 +97,3 @@ VOLUME ["/data", "/logs"]
 EXPOSE 80 6379 8080
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["serve"]
-
