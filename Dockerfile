@@ -41,6 +41,9 @@ RUN set -eux; \
         rpm -ivh --nodeps --replacepkgs /tmp/zlib-devel.rpm; \
         rm -f /tmp/zlib-devel.rpm; \
     fi; \
+    if [ ! -f /usr/lib64/libz.so ] && [ -f /usr/lib64/libz.so.1 ]; then \
+        ln -sf /usr/lib64/libz.so.1 /usr/lib64/libz.so; \
+    fi; \
     echo "int main(){}" | gcc -x c - -o /dev/null && echo "gcc test: OK" || echo "gcc test: FAILED"; \
     command -v cc 2>/dev/null || ln -sf "$(command -v gcc)" /usr/bin/cc
 
@@ -54,7 +57,8 @@ RUN chmod +x /usr/local/bin/build-nginx.sh && /usr/local/bin/build-nginx.sh
 RUN set -eux; \
     curl -fsSL "https://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz" -o redis.tar.gz; \
     tar -xzf redis.tar.gz; \
-    make -C "redis-${REDIS_VERSION}" -j"$(nproc)" BUILD_TLS=yes; \
+    make -C "redis-${REDIS_VERSION}" -j"$(nproc)" BUILD_TLS=yes \
+        LDFLAGS="-L/usr/lib64 -lz"; \
     make -C "redis-${REDIS_VERSION}" PREFIX=/opt/redis install; \
     /opt/redis/bin/redis-server --version | tee /build-artifacts/redis-version.log
 
