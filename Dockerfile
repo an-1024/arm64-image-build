@@ -19,14 +19,24 @@ ENV NGINX_VERSION=${NGINX_VERSION} \
     PCRE_VERSION=${PCRE_VERSION} \
     ZLIB_VERSION=${ZLIB_VERSION}
 
+RUN set -eux; \
+    yum install -y openssl-devel || true; \
+    dnf install -y openssl-devel || true
+
 COPY cache/rpms/ /tmp/rpms/
 RUN set -eux; \
     if ls /tmp/rpms/*.rpm >/dev/null 2>&1; then \
         rpm -ivh --nodeps --replacepkgs /tmp/rpms/*.rpm; \
         rm -rf /tmp/rpms; \
-        echo "int main(){}" | gcc -x c - -o /dev/null && echo "gcc test: OK" || echo "gcc test: FAILED"; \
-        command -v cc 2>/dev/null || ln -sf "$(command -v gcc)" /usr/bin/cc; \
-    fi
+    fi; \
+    if ! ls /usr/include/openssl/ssl.h >/dev/null 2>&1; then \
+        curl -fsSL "https://repo.openeuler.org/openEuler-20.03-LTS/OS/aarch64/Packages/openssl-devel-1.1.1d-9.oe1.aarch64.rpm" \
+            -o /tmp/openssl-devel.rpm; \
+        rpm -ivh --nodeps --replacepkgs /tmp/openssl-devel.rpm; \
+        rm -f /tmp/openssl-devel.rpm; \
+    fi; \
+    echo "int main(){}" | gcc -x c - -o /dev/null && echo "gcc test: OK" || echo "gcc test: FAILED"; \
+    command -v cc 2>/dev/null || ln -sf "$(command -v gcc)" /usr/bin/cc
 
 WORKDIR /build
 
