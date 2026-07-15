@@ -1,7 +1,8 @@
+53cb4c6a38ad2359324bb32f2f2e19fafe8d3175
 #!/bin/bash
 set -euo pipefail
 
-IMAGE=${IMAGE:-uos1070u1-java21-redis7-nginx1.31.2-arm64:v2}
+IMAGE=${IMAGE:-uos1070u1-java21-redis7-nginx1.26.2-arm64:v1}
 BASE_IMAGE=${BASE_IMAGE:-ghcr.io/an-1024/uos-server-20-1070u1e-arm64:latest}
 NGINX_VERSION=${NGINX_VERSION:-1.26.2}
 REDIS_VERSION=${REDIS_VERSION:-7.4.0}
@@ -113,7 +114,7 @@ docker run --rm "$IMAGE" sh -c 'nginx -v 2>&1; redis-server --version 2>&1; java
 # Package tarballs
 tar -C "$OUTPUT_DIR/rootfs-export" -czf "$OUTPUT_DIR/nginx-${NGINX_VERSION}-arm64.tar.gz" nginx 2>/dev/null || true
 tar -C "$OUTPUT_DIR/rootfs-export" -czf "$OUTPUT_DIR/jdk21-arm64.tar.gz" jdk21 2>/dev/null || true
-docker save "$IMAGE" | gzip > "$OUTPUT_DIR/uos1070u1-java21-redis7-nginx${NGINX_VERSION}-arm64-v2.tar.gz"
+docker save "$IMAGE" | gzip > "$OUTPUT_DIR/uos1070u1-java21-redis7-nginx${NGINX_VERSION}-arm64-v1.tar.gz"
 
 rm -rf "$OUTPUT_DIR/rootfs-export"
 
@@ -122,4 +123,4 @@ echo "Build complete: $IMAGE"
 echo "Artifacts:"
 ls -lh "$OUTPUT_DIR/"*.tar.gz 2>/dev/null || echo "  (no tar.gz artifacts)"
 echo ""
-echo "Main image archive: $OUTPUT_DIR/uos1070u1-java21-redis7-nginx${NGINX_VERSION}-arm64-v2.tar.gz"
+echo "Main image archive: $OUTPUT_DIR/uos1070u1-java21-redis7-nginx${NGINX_VERSION}-arm64-v1.tar.gz"
