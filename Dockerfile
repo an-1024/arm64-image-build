@@ -36,9 +36,9 @@ RUN set -eux; \
         rm -f /tmp/openssl-devel.rpm; \
     fi; \
     if ! ls /usr/include/zlib.h >/dev/null 2>&1; then \
-        curl -fsSL "https://repo.openeuler.org/openEuler-20.03-LTS/OS/aarch64/Packages/zlib-devel-1.2.11-13.oe1.aarch64.rpm" \
+        curl -fsSL "https://repo.openeuler.org/openEuler-20.03-LTS/OS/aarch64/Packages/zlib-devel-1.2.11-17.oe1.aarch64.rpm" \
             -o /tmp/zlib-devel.rpm; \
-        curl -fsSL "https://repo.openeuler.org/openEuler-20.03-LTS/OS/aarch64/Packages/zlib-1.2.11-13.oe1.aarch64.rpm" \
+        curl -fsSL "https://repo.openeuler.org/openEuler-20.03-LTS/OS/aarch64/Packages/zlib-1.2.11-17.oe1.aarch64.rpm" \
             -o /tmp/zlib.rpm; \
         rpm -ivh --nodeps --replacepkgs /tmp/zlib.rpm /tmp/zlib-devel.rpm; \
         rm -f /tmp/zlib.rpm /tmp/zlib-devel.rpm; \
