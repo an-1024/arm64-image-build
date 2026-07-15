@@ -16,6 +16,19 @@ LABEL org.opencontainers.image.title="UOS 1070U1 E ARM64 Java21 Redis7 Nginx Lib
 # Pre-built nginx and redis from UnionTech (extracted by prepare-packages.sh)
 COPY packages/ /
 
+# Install essential tools (UOS minimal image may lack tar, curl, etc.)
+# If no package manager, RPMs will be installed from the packages dir
+RUN set -eux; \
+    if command -v yum >/dev/null 2>&1; then \
+        yum install -y tar gzip curl ca-certificates || true; \
+    fi; \
+    if command -v dnf >/dev/null 2>&1; then \
+        dnf install -y tar gzip curl ca-certificates || true; \
+    fi; \
+    # Ensure basic tools exist
+    command -v tar >/dev/null 2>&1 || echo "WARNING: tar not available"; \
+    command -v curl >/dev/null 2>&1 || echo "WARNING: curl not available"
+
 # LibreOffice ARM64 RPMs
 COPY rpm/ /tmp/rpms/
 RUN set -eux; \
