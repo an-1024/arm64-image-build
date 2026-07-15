@@ -117,7 +117,6 @@ RUN set -eux; \
     grep -q '^root:' /etc/passwd || printf 'root:x:0:0:root:/root:/bin/bash\n' >> /etc/passwd; \
     grep -q '^root:' /etc/group || printf 'root:x:0:\n' >> /etc/group; \
     mkdir -p /root; \
-    cp /usr/local/nginx/conf/mime.types /etc/nginx/mime.types; \
     chmod +x /entrypoint.sh /opt/verify.sh; \
     nginx -t; \
     VERIFY_INSIDE_CONTAINER=1 /opt/verify.sh
