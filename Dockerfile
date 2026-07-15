@@ -9,15 +9,18 @@ ARG REDIS_VERSION
 ARG BASE_IMAGE
 
 LABEL org.opencontainers.image.title="UOS 1070U1 E ARM64 Java21 Redis7 Nginx LibreOffice runtime" \
-      org.opencontainers.image.version="v1" \
+      org.opencontainers.image.version="1.1" \
       org.opencontainers.image.base.name="${BASE_IMAGE}" \
       org.opencontainers.image.description="UOS 1070U1 E ARM64 runtime with Java 21, Redis ${REDIS_VERSION}, nginx ${NGINX_VERSION}, LibreOffice"
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN echo 'deb http://mirrors.tuna.tsinghua.edu.cn/debian bookworm main' > /etc/apt/sources.list && \
+    echo 'deb http://mirrors.tuna.tsinghua.edu.cn/debian bookworm-updates main' >> /etc/apt/sources.list && \
+    echo 'deb http://mirrors.tuna.tsinghua.edu.cn/debian-security bookworm-security main' >> /etc/apt/sources.list && \
+    apt-get update && apt-get install -y --no-install-recommends \
     net-tools procps vim iproute2 iputils-ping curl wget telnet dnsutils \
     lsof tcpdump unzip zip git jq less tree sysstat strace rsync \
     htop openssh-client ca-certificates bash-completion file \
-    socat ethtool nmap ltrace iotop 2>/dev/null || true
+    socat ethtool nmap ltrace iotop 2>&1 | tail -20 && echo 'TOOLS-INSTALLED-OK' || echo 'TOOLS-INSTALL-FAILED' 
 
 RUN apt-get update && apt-get install -y libxslt1.1 2>/dev/null || true
 
