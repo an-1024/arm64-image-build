@@ -13,6 +13,10 @@ LABEL org.opencontainers.image.title="UOS 1070U1 E ARM64 Java21 Redis7 Nginx Lib
       org.opencontainers.image.base.name="${BASE_IMAGE}" \
       org.opencontainers.image.description="UOS 1070U1 E ARM64 runtime with Java 21, Redis ${REDIS_VERSION}, nginx ${NGINX_VERSION}, LibreOffice"
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    net-tools procps vim iproute2 iputils-ping curl wget telnet dnsutils \
+    lsof tcpdump 2>/dev/null || true
+
 # Pre-built nginx and redis from UnionTech (extracted by prepare-packages.sh)
 COPY packages/ /
 
@@ -81,3 +85,4 @@ VOLUME ["/data", "/logs"]
 EXPOSE 80 6379 8080
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["serve"]
+
