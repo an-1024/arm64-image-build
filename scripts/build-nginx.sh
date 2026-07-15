@@ -138,7 +138,6 @@ configure_and_build() {
         fetch_bundled_deps
         configure_args+=(
             "--with-openssl=${BUILD_ROOT}/openssl-${OPENSSL_VERSION}"
-            "--with-openssl-opt=no-apps no-tests"
             "--with-pcre=${BUILD_ROOT}/pcre-${PCRE_VERSION}"
             "--with-zlib=${BUILD_ROOT}/zlib-${ZLIB_VERSION}"
         )
