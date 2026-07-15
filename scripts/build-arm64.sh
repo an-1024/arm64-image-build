@@ -84,7 +84,6 @@ RPM_LIST=(
     kernel-devel-4.19.90-2003.4.0.0036.oe1.aarch64.rpm
     libmpc-1.1.0-3.oe1.aarch64.rpm
     make-4.2.1-15.oe1.aarch64.rpm
-    openssl-devel-1.1.1d-9.oe1.aarch64.rpm
     tar-1.30-11.oe1.aarch64.rpm
 )
 for rpm in "${RPM_LIST[@]}"; do
