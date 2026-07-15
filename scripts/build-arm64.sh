@@ -62,6 +62,9 @@ if [ ! -d packages ] || [ -z "$(ls -A packages 2>/dev/null)" ]; then
         echo "Extracting packages..."
         tar -xzf packages-arm64.tar.gz
         rm -f packages-arm64.tar.gz
+        # Rename directories to match Dockerfile expectations
+        [ -d packages-arm64 ] && mv packages-arm64 packages
+        [ -d x11-deps-arm64 ] && mv x11-deps-arm64 x11-deps
     fi
 fi
 
