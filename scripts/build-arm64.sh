@@ -45,17 +45,15 @@ pull_image() {
 if [ ! -d packages ] || [ -z "$(ls -A packages 2>/dev/null)" ]; then
     echo "Downloading pre-built packages from GitHub Release..."
     if command -v gh >/dev/null 2>&1; then
-        gh release download latest --pattern "packages-arm64.tar.gz" --dir . 2>/dev/null || {
-            echo "gh release download failed, trying curl..."
-            RELEASE_URL=$(curl -fsSL "https://api.github.com/repos/an-1024/arm64-image-build/releases/latest" \
-                | python3 -c "import json,sys;d=json.load(sys.stdin);print(d['tag_name'])" 2>/dev/null || echo "")
-            if [ -n "$RELEASE_URL" ]; then
-                curl -fsSL -L "https://github.com/an-1024/arm64-image-build/releases/download/$RELEASE_URL/packages-arm64.tar.gz" \
-                    -o packages-arm64.tar.gz
-            fi
-        }
-    else
-        echo "gh CLI not available, will use local packages/ or tools/"
+        gh release download v1-packages --pattern "packages-arm64.tar.gz" --dir . 2>/dev/null || true
+    fi
+    if [ ! -f packages-arm64.tar.gz ]; then
+        echo "gh failed, trying curl..."
+        curl -fsSL -L "https://github.com/an-1024/arm64-image-build/releases/download/v1-packages/packages-arm64.tar.gz" \
+            -o packages-arm64.tar.gz || true
+    fi
+    if [ ! -f packages-arm64.tar.gz ]; then
+        echo "No packages found, creating empty dirs"
         mkdir -p packages tools
     fi
     if [ -f packages-arm64.tar.gz ]; then
