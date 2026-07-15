@@ -34,6 +34,8 @@ RUN set -eux; \
     rm -f /tmp/jdk21.tar.gz
 
 # LibreOffice ARM64 RPMs
+RUN apt-get update && apt-get install -y libxslt1.1 2>/dev/null || true
+
 COPY rpm/ /tmp/rpms/
 RUN set -eux; \
     if ls /tmp/rpms/*.rpm >/dev/null 2>&1; then \
