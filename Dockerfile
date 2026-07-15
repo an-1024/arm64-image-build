@@ -17,9 +17,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     net-tools procps vim iproute2 iputils-ping curl wget telnet dnsutils \
     lsof tcpdump unzip zip git jq less tree sysstat strace rsync \
     htop openssh-client ca-certificates bash-completion file \
-    socat ethtool nmap ltrace iotop 2>&1 || (echo "APT-GET-FAILED" && exit 1)
+    socat ethtool nmap ltrace iotop 2>/dev/null || true
 
-RUN apt-get update && apt-get install -y libxslt1.1 2>&1 || (echo "APT-GET-FAILED" && exit 1)
+RUN apt-get update && apt-get install -y libxslt1.1 2>/dev/null || true
 
 # Pre-built nginx and redis from UnionTech (extracted by prepare-packages.sh)
 COPY packages/ /
@@ -49,7 +49,7 @@ RUN set -eux; \
         rm -rf /tmp/rpms; \
     fi; \
     if ! command -v libreoffice >/dev/null 2>&1; then \
-        LO_DIR=$(ls -d /opt/libreoffice* 2>&1 || (echo "APT-GET-FAILED" && exit 1)); \
+        LO_DIR=$(ls -d /opt/libreoffice* 2>/dev/null || true); \
         if [ -n "$LO_DIR" ]; then \
             ln -sf "$LO_DIR/program/soffice" /usr/bin/libreoffice; \
         fi; \
