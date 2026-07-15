@@ -1,4 +1,3 @@
-53cb4c6a38ad2359324bb32f2f2e19fafe8d3175
 #!/bin/bash
 set -euo pipefail
 
