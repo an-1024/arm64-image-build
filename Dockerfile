@@ -37,6 +37,15 @@ WORKDIR /build
 # Pre-downloaded source archives (from host before docker build)
 COPY cache/*.tar.gz /build/
 
+# Build and install OpenSSL from source for Redis TLS dependency
+# (also used by nginx --with-openssl if USE_BUNDLED_DEPS=1)
+RUN set -eux; \
+    tar -xzf "/build/openssl-${OPENSSL_VERSION}.tar.gz"; \
+    cd "/build/openssl-${OPENSSL_VERSION}"; \
+    ./Configure linux-aarch64 --prefix=/opt/openssl --libdir=lib; \
+    make -j"$(nproc)"; \
+    make install_sw
+
 COPY scripts/build-nginx.sh /usr/local/bin/build-nginx.sh
 RUN chmod +x /usr/local/bin/build-nginx.sh && /usr/local/bin/build-nginx.sh
 
@@ -44,7 +53,9 @@ RUN set -eux; \
     curl -fsSL "https://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz" -o redis.tar.gz; \
     tar -xzf redis.tar.gz; \
     make -C "redis-${REDIS_VERSION}" -j"$(nproc)" BUILD_TLS=yes \
-        CC=gcc CFLAGS="-I/build/openssl-${OPENSSL_VERSION}/include"; \
+        CC=gcc \
+        CFLAGS="-I/opt/openssl/include" \
+        LDFLAGS="-L/opt/openssl/lib -L/opt/openssl/lib64 -Wl,-rpath,/opt/openssl/lib -Wl,-rpath,/opt/openssl/lib64"; \
     make -C "redis-${REDIS_VERSION}" PREFIX=/opt/redis install; \
     /opt/redis/bin/redis-server --version | tee /build-artifacts/redis-version.log
 
@@ -87,6 +98,7 @@ RUN set -eux; \
 
 COPY --from=builder /usr/local/nginx /usr/local/nginx
 COPY --from=builder /opt/redis /opt/redis
+COPY --from=builder /opt/openssl /opt/openssl
 COPY --from=builder /opt/java/openjdk /opt/java/openjdk
 COPY --from=builder /build-artifacts /opt/build-audit
 
@@ -94,6 +106,18 @@ COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY redis/redis.conf /etc/redis/redis.conf
 COPY entrypoint.sh /entrypoint.sh
 COPY scripts/verify.sh /opt/verify.sh
+
+# LibreOffice offline install (pre-downloaded ARM64 RPMs from openEuler 20.03 repo)
+COPY rpm/ /tmp/libreoffice-rpms/
+RUN set -eux; \
+    if ls /tmp/libreoffice-rpms/*.rpm >/dev/null 2>&1; then \
+        rpm -Uvh /tmp/libreoffice-rpms/*.rpm --nodeps --force; \
+        rm -rf /tmp/libreoffice-rpms; \
+        ln -sf /opt/libreoffice*/program/soffice /usr/bin/libreoffice; \
+        libreoffice --version; \
+    else \
+        echo "No LibreOffice RPMs found in rpm/, skipping installation"; \
+    fi
 
 ENV JAVA_HOME=/opt/java/openjdk \
     PATH=/opt/java/openjdk/bin:/usr/local/nginx/sbin:/opt/redis/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
