@@ -62,7 +62,7 @@ ENV JAVA_HOME=/opt/java/jdk21 \
 
 RUN set -eux; \
     chmod +x /entrypoint.sh /opt/verify.sh; \
-    mkdir -p /opt/app /data/redis /logs /run /var/log/nginx; \
+    mkdir -p /opt/app /data/redis /logs /run /var/log/nginx /var/lib/nginx/tmp; \
     touch /etc/passwd /etc/group; \
     grep -q '^nginx:' /etc/passwd || printf 'nginx:x:999:999:nginx:/var/lib/nginx:/sbin/nologin\n' >> /etc/passwd; \
     grep -q '^nginx:' /etc/group || printf 'nginx:x:999:\n' >> /etc/group; \
