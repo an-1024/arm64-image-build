@@ -66,7 +66,8 @@ COPY scripts/verify.sh /opt/verify.sh
 ENV JAVA_HOME=/opt/java/jdk21 \
     PATH=/opt/java/jdk21/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     NGINX_VERSION=${NGINX_VERSION} \
-    REDIS_VERSION=${REDIS_VERSION}
+    REDIS_VERSION=${REDIS_VERSION} \
+    MALLOC=libc
 
 RUN set -eux; \
     chmod +x /entrypoint.sh /opt/verify.sh; \
