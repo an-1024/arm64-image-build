@@ -67,7 +67,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="runtime-v1-$(date +%Y%m%d%H%M%S)-${{ github.run_id }}"
-          TARBALL=$(ls artifacts/*-v2.tar.gz artifacts/*-arm64-v2.tar.gz 2>/dev/null | head -1)
+          TARBALL=$(ls artifacts/*-v1.tar.gz artifacts/*-arm64-v1.tar.gz 2>/dev/null | head -1)
           echo "Uploading $TARBALL to release $TAG..."
           gh release create "$TAG" "$TARBALL" \
             --title "Runtime v1 ($(date +%Y-%m-%d))" \
