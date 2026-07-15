@@ -52,14 +52,12 @@ curl -fsSL "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" \
 OPENSSL_VERSION=${OPENSSL_VERSION:-3.0.16}
 PCRE_VERSION=${PCRE_VERSION:-8.45}
 ZLIB_VERSION=${ZLIB_VERSION:-1.3.2}
-# OpenSSL is always needed for Redis TLS build (headers + libraries)
-curl -fsSL "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz" \
-    -o "cache/openssl-${OPENSSL_VERSION}.tar.gz" || {
-    echo "Failed to download openssl source" >&2
-    exit 1
-}
-
 if [ "${USE_BUNDLED_DEPS:-0}" = "1" ]; then
+    curl -fsSL "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz" \
+        -o "cache/openssl-${OPENSSL_VERSION}.tar.gz" || {
+        echo "Failed to download openssl source" >&2
+        exit 1
+    }
     curl -fsSL "https://downloads.sourceforge.net/project/pcre/pcre/${PCRE_VERSION}/pcre-${PCRE_VERSION}.tar.gz" \
         -o "cache/pcre-${PCRE_VERSION}.tar.gz" || {
         echo "Failed to download pcre source" >&2
@@ -86,7 +84,6 @@ RPM_LIST=(
     kernel-devel-4.19.90-2003.4.0.0036.oe1.aarch64.rpm
     libmpc-1.1.0-3.oe1.aarch64.rpm
     make-4.2.1-15.oe1.aarch64.rpm
-    openssl-devel-1.1.1d-9.oe1.aarch64.rpm
     tar-1.30-11.oe1.aarch64.rpm
 )
 for rpm in "${RPM_LIST[@]}"; do
@@ -100,14 +97,9 @@ done
 
 pull_image "$BASE_IMAGE"
 
-CACHE_ARGS=""
-if [ "${BUILDX_CACHE:-0}" = "1" ]; then
-    CACHE_ARGS="--cache-from type=gha --cache-to type=gha,mode=max"
-fi
-
+pull_image "$BASE_IMAGE"
 docker build \
     --platform linux/arm64 \
-    $CACHE_ARGS \
     --build-arg BASE_IMAGE="$BASE_IMAGE" \
     --build-arg NGINX_VERSION="$NGINX_VERSION" \
     --build-arg REDIS_VERSION="$REDIS_VERSION" \

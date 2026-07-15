@@ -62,9 +62,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
@@ -90,7 +87,6 @@ jobs:
       - name: Build, verify, and export artifacts
         env:
           ALLOW_NON_ARM64_BUILD: "1"
-          BUILDX_CACHE: "1"
         run: |
           chmod +x entrypoint.sh scripts/*.sh
           ./scripts/build-arm64.sh
@@ -101,7 +97,6 @@ jobs:
           name: uos1070u1-runtime-arm64
           path: |
             artifacts/*.tar.gz
-            artifacts/*.tar
             artifacts/dependency-audit/**
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 14
