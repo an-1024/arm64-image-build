@@ -44,7 +44,7 @@ permissions:
 env:
   IMAGE: uos1070u1-java21-redis7-nginx1.31.2-arm64:v1
   BASE_IMAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.base_image || 'registry.uniontech.com/uos-server-base/uos-server-20-1070u1e:latest' }}
-  NGINX_VERSION: "1.30.3"
+  NGINX_VERSION: "1.31.2"
   REDIS_VERSION: "7.4.9"
   USE_BUNDLED_DEPS: ${{ github.event_name == 'workflow_dispatch' && inputs.use_bundled_deps || '1' }}
   UNIONTECH_REGISTRY_USERNAME: ${{ secrets.UNIONTECH_REGISTRY_USERNAME }}
