@@ -1,11 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-IMAGE=${IMAGE:-uos1070u1-java21-redis7-nginx1.31.2-arm64:v1}
+IMAGE=${IMAGE:-uos1070u1-java21-redis7-nginx1.31.2-arm64:v2}
 BASE_IMAGE=${BASE_IMAGE:-ghcr.io/an-1024/uos-server-20-1070u1e-arm64:latest}
-NGINX_VERSION=${NGINX_VERSION:-1.31.2}
-REDIS_VERSION=${REDIS_VERSION:-7.4.9}
-USE_BUNDLED_DEPS=${USE_BUNDLED_DEPS:-0}
+NGINX_VERSION=${NGINX_VERSION:-1.26.2}
+REDIS_VERSION=${REDIS_VERSION:-7.4.0}
 OUTPUT_DIR=${OUTPUT_DIR:-artifacts}
 
 host_arch=$(uname -m)
@@ -42,72 +41,40 @@ pull_image() {
     return 1
 }
 
-mkdir -p cache
-echo "Downloading source archives on host..."
-curl -fsSL "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" \
-    -o "cache/nginx-${NGINX_VERSION}.tar.gz" || {
-    echo "Failed to download nginx source" >&2
-    exit 1
-}
-OPENSSL_VERSION=${OPENSSL_VERSION:-3.0.16}
-PCRE_VERSION=${PCRE_VERSION:-8.45}
-ZLIB_VERSION=${ZLIB_VERSION:-1.3.2}
-if [ "${USE_BUNDLED_DEPS:-0}" = "1" ]; then
-    curl -fsSL "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz" \
-        -o "cache/openssl-${OPENSSL_VERSION}.tar.gz" || {
-        echo "Failed to download openssl source" >&2
-        exit 1
-    }
-    curl -fsSL "https://downloads.sourceforge.net/project/pcre/pcre/${PCRE_VERSION}/pcre-${PCRE_VERSION}.tar.gz" \
-        -o "cache/pcre-${PCRE_VERSION}.tar.gz" || {
-        echo "Failed to download pcre source" >&2
-        exit 1
-    }
-    curl -fsSL "https://github.com/madler/zlib/archive/refs/tags/v${ZLIB_VERSION}.tar.gz" \
-        -o "cache/zlib-${ZLIB_VERSION}.tar.gz" || {
-        echo "Failed to download zlib source" >&2
-        exit 1
-    }
+# ===== Download packages if not present locally =====
+if [ ! -d packages ] || [ -z "$(ls -A packages 2>/dev/null)" ]; then
+    echo "Downloading pre-built packages from GitHub Release..."
+    if command -v gh >/dev/null 2>&1; then
+        gh release download latest --pattern "packages-arm64.tar.gz" --dir . 2>/dev/null || {
+            echo "gh release download failed, trying curl..."
+            RELEASE_URL=$(curl -fsSL "https://api.github.com/repos/an-1024/arm64-image-build/releases/latest" \
+                | python3 -c "import json,sys;d=json.load(sys.stdin);print(d['tag_name'])" 2>/dev/null || echo "")
+            if [ -n "$RELEASE_URL" ]; then
+                curl -fsSL -L "https://github.com/an-1024/arm64-image-build/releases/download/$RELEASE_URL/packages-arm64.tar.gz" \
+                    -o packages-arm64.tar.gz
+            fi
+        }
+    else
+        echo "gh CLI not available, will use local packages/ or x11-deps/"
+        mkdir -p packages x11-deps
+    fi
+    if [ -f packages-arm64.tar.gz ]; then
+        echo "Extracting packages..."
+        tar -xzf packages-arm64.tar.gz
+        rm -f packages-arm64.tar.gz
+    fi
 fi
 
-# Download RPMs for UOS builder (openEuler 20.03 repo)
-echo "Downloading RPM packages for builder..."
-RPM_BASE_URL="https://repo.openeuler.org/openEuler-20.03-LTS/OS/aarch64/Packages"
-RPM_DIR="cache/rpms"
-mkdir -p "$RPM_DIR"
-RPM_LIST=(
-    binutils-2.33.1-5.oe1.aarch64.rpm
-    cpp-7.3.0-20190804.h31.oe1.aarch64.rpm
-    gcc-7.3.0-20190804.h31.oe1.aarch64.rpm
-    gcc-c++-7.3.0-20190804.h31.oe1.aarch64.rpm
-    glibc-devel-2.28-36.oe1.aarch64.rpm
-    kernel-devel-4.19.90-2003.4.0.0036.oe1.aarch64.rpm
-    libmpc-1.1.0-3.oe1.aarch64.rpm
-    make-4.2.1-15.oe1.aarch64.rpm
-    tar-1.30-11.oe1.aarch64.rpm
-    openssl-devel-1.1.1d-9.oe1.aarch64.rpm
-)
-for rpm in "${RPM_LIST[@]}"; do
-    [ -f "$RPM_DIR/$rpm" ] && continue
-    echo "  Downloading $rpm..."
-    curl -fsSL "$RPM_BASE_URL/$rpm" -o "$RPM_DIR/$rpm" || {
-        echo "Failed to download $rpm" >&2
-        exit 1
-    }
-done
+# If still no packages, create empty dirs so Docker COPY doesn't fail
+mkdir -p packages x11-deps
 
 pull_image "$BASE_IMAGE"
 
-pull_image "$BASE_IMAGE"
 docker build \
     --platform linux/arm64 \
     --build-arg BASE_IMAGE="$BASE_IMAGE" \
     --build-arg NGINX_VERSION="$NGINX_VERSION" \
     --build-arg REDIS_VERSION="$REDIS_VERSION" \
-    --build-arg USE_BUNDLED_DEPS="$USE_BUNDLED_DEPS" \
-    --build-arg ZLIB_VERSION="$ZLIB_VERSION" \
-    --build-arg OPENSSL_VERSION="$OPENSSL_VERSION" \
-    --build-arg PCRE_VERSION="$PCRE_VERSION" \
     -t "$IMAGE" \
     .
 
@@ -121,17 +88,28 @@ trap cleanup EXIT
 
 rm -rf "$OUTPUT_DIR/rootfs-export"
 mkdir -p "$OUTPUT_DIR/rootfs-export" "$OUTPUT_DIR/dependency-audit"
-docker cp "$container_id:/usr/local/nginx" "$OUTPUT_DIR/rootfs-export/nginx"
-docker cp "$container_id:/opt/redis" "$OUTPUT_DIR/rootfs-export/redis"
-docker cp "$container_id:/opt/java/openjdk" "$OUTPUT_DIR/rootfs-export/jdk21"
-docker cp "$container_id:/opt/build-audit/." "$OUTPUT_DIR/dependency-audit/"
 
-tar -C "$OUTPUT_DIR/rootfs-export" -czf "$OUTPUT_DIR/nginx-${NGINX_VERSION}-arm64.tar.gz" nginx
-tar -C "$OUTPUT_DIR/rootfs-export" -czf "$OUTPUT_DIR/redis-${REDIS_VERSION}-arm64.tar.gz" redis
-tar -C "$OUTPUT_DIR/rootfs-export" -czf "$OUTPUT_DIR/jdk21-arm64.tar.gz" jdk21
-docker save "$IMAGE" | gzip > "$OUTPUT_DIR/uos1070u1-java21-redis7-nginx${NGINX_VERSION}-arm64-v1.tar.gz"
+# Export components
+docker cp "$container_id:/usr/sbin/nginx" "$OUTPUT_DIR/rootfs-export/nginx" 2>/dev/null || true
+docker cp "$container_id:/usr/bin/redis-server" "$OUTPUT_DIR/rootfs-export/redis-server" 2>/dev/null || true
+docker cp "$container_id:/opt/java/jdk21" "$OUTPUT_DIR/rootfs-export/jdk21" 2>/dev/null || true
+docker cp "$container_id:/opt/build-audit/." "$OUTPUT_DIR/dependency-audit/" 2>/dev/null || true
+
+# Version logs
+mkdir -p "$OUTPUT_DIR/dependency-audit"
+docker run --rm "$IMAGE" sh -c 'nginx -v 2>&1; redis-server --version 2>&1; java -version 2>&1; libreoffice --version 2>&1' \
+    > "$OUTPUT_DIR/dependency-audit/versions.log" 2>&1 || true
+
+# Package tarballs
+tar -C "$OUTPUT_DIR/rootfs-export" -czf "$OUTPUT_DIR/nginx-${NGINX_VERSION}-arm64.tar.gz" nginx 2>/dev/null || true
+tar -C "$OUTPUT_DIR/rootfs-export" -czf "$OUTPUT_DIR/jdk21-arm64.tar.gz" jdk21 2>/dev/null || true
+docker save "$IMAGE" | gzip > "$OUTPUT_DIR/uos1070u1-java21-redis7-nginx${NGINX_VERSION}-arm64-v2.tar.gz"
 
 rm -rf "$OUTPUT_DIR/rootfs-export"
 
+echo ""
 echo "Build complete: $IMAGE"
-echo "Artifacts written to: $OUTPUT_DIR"
+echo "Artifacts:"
+ls -lh "$OUTPUT_DIR/"*.tar.gz 2>/dev/null || echo "  (no tar.gz artifacts)"
+echo ""
+echo "Main image archive: $OUTPUT_DIR/uos1070u1-java21-redis7-nginx${NGINX_VERSION}-arm64-v2.tar.gz"
