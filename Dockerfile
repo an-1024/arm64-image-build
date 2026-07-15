@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=registry.uniontech.com/uos-server-base/uos-server-20-1070u1e:latest
+ARG BASE_IMAGE=ghcr.io/an-1024/uos-server-20-1070u1e-arm64:latest
 ARG NGINX_VERSION=1.31.2
 ARG REDIS_VERSION=7.4.9
 
@@ -19,8 +19,6 @@ ENV NGINX_VERSION=${NGINX_VERSION} \
     PCRE_VERSION=${PCRE_VERSION} \
     ZLIB_VERSION=${ZLIB_VERSION}
 
-# Pre-downloaded RPMs (from host before docker build), installed with --nodeps
-# to avoid the missing kernel-headers dependency in openEuler 20.03 repo.
 COPY cache/rpms/ /tmp/rpms/
 RUN set -eux; \
     if ls /tmp/rpms/*.rpm >/dev/null 2>&1; then \
@@ -28,23 +26,11 @@ RUN set -eux; \
         rm -rf /tmp/rpms; \
         echo "int main(){}" | gcc -x c - -o /dev/null && echo "gcc test: OK" || echo "gcc test: FAILED"; \
         command -v cc 2>/dev/null || ln -sf "$(command -v gcc)" /usr/bin/cc; \
-        mkdir -p /usr/include/linux; \
-        printf '#ifndef _LINUX_LIMITS_H\n#define _LINUX_LIMITS_H\n\n#define NR_OPEN 1024\n#define NGROUPS_MAX 65536\n#define ARG_MAX 131072\n#define LINK_MAX 127\n#define MAX_CANON 255\n#define MAX_INPUT 255\n#define NAME_MAX 255\n#define PATH_MAX 4096\n#define PIPE_BUF 4096\n#define RTSIG_MAX 32\n\n#endif\n' > /usr/include/linux/limits.h; \
     fi
 
 WORKDIR /build
 
-# Pre-downloaded source archives (from host before docker build)
 COPY cache/*.tar.gz /build/
-
-# Build and install OpenSSL from source for Redis TLS dependency
-# (also used by nginx --with-openssl if USE_BUNDLED_DEPS=1)
-RUN set -eux; \
-    tar -xzf "/build/openssl-${OPENSSL_VERSION}.tar.gz"; \
-    cd "/build/openssl-${OPENSSL_VERSION}"; \
-    ./Configure linux-aarch64 --prefix=/opt/openssl --libdir=lib; \
-    make -j"$(nproc)"; \
-    make install_sw
 
 COPY scripts/build-nginx.sh /usr/local/bin/build-nginx.sh
 RUN chmod +x /usr/local/bin/build-nginx.sh && /usr/local/bin/build-nginx.sh
@@ -52,10 +38,7 @@ RUN chmod +x /usr/local/bin/build-nginx.sh && /usr/local/bin/build-nginx.sh
 RUN set -eux; \
     curl -fsSL "https://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz" -o redis.tar.gz; \
     tar -xzf redis.tar.gz; \
-    make -C "redis-${REDIS_VERSION}" -j"$(nproc)" BUILD_TLS=yes \
-        CC=gcc \
-        CFLAGS="-I/opt/openssl/include" \
-        LDFLAGS="-L/opt/openssl/lib -L/opt/openssl/lib64 -Wl,-rpath,/opt/openssl/lib -Wl,-rpath,/opt/openssl/lib64"; \
+    make -C "redis-${REDIS_VERSION}" -j"$(nproc)" BUILD_TLS=yes; \
     make -C "redis-${REDIS_VERSION}" PREFIX=/opt/redis install; \
     /opt/redis/bin/redis-server --version | tee /build-artifacts/redis-version.log
 
@@ -78,9 +61,6 @@ LABEL org.opencontainers.image.title="UOS 1070U1 E ARM64 Java21 Redis7 Nginx run
       org.opencontainers.image.base.name="${BASE_IMAGE}" \
       org.opencontainers.image.description="UOS 1070U1 E ARM64 enterprise runtime with Java 21, Redis 7.4.9, and nginx ${NGINX_VERSION}"
 
-# Runtime deps: ca-certificates for curl/health checks, libs for Redis/nginx
-# With USE_BUNDLED_DEPS=1, nginx statically links pcre/zlib/openssl,
-# so no system pcre/zlib/openssl packages needed at runtime.
 RUN set -eux; \
     if command -v apt-get >/dev/null 2>&1; then \
         rm -f /etc/apt/sources.list.d/*.list; \
@@ -98,7 +78,6 @@ RUN set -eux; \
 
 COPY --from=builder /usr/local/nginx /usr/local/nginx
 COPY --from=builder /opt/redis /opt/redis
-COPY --from=builder /opt/openssl /opt/openssl
 COPY --from=builder /opt/java/openjdk /opt/java/openjdk
 COPY --from=builder /build-artifacts /opt/build-audit
 
@@ -106,18 +85,6 @@ COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY redis/redis.conf /etc/redis/redis.conf
 COPY entrypoint.sh /entrypoint.sh
 COPY scripts/verify.sh /opt/verify.sh
-
-# LibreOffice offline install (pre-downloaded ARM64 RPMs from openEuler 20.03 repo)
-COPY rpm/ /tmp/libreoffice-rpms/
-RUN set -eux; \
-    if ls /tmp/libreoffice-rpms/*.rpm >/dev/null 2>&1; then \
-        rpm -Uvh /tmp/libreoffice-rpms/*.rpm --nodeps --force; \
-        rm -rf /tmp/libreoffice-rpms; \
-        ln -sf /opt/libreoffice*/program/soffice /usr/bin/libreoffice; \
-        libreoffice --version; \
-    else \
-        echo "No LibreOffice RPMs found in rpm/, skipping installation"; \
-    fi
 
 ENV JAVA_HOME=/opt/java/openjdk \
     PATH=/opt/java/openjdk/bin:/usr/local/nginx/sbin:/opt/redis/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
