@@ -96,26 +96,39 @@ fetch_nginx() {
 
 fetch_bundled_deps() {
     cd "$BUILD_ROOT"
-    if [ -f "openssl-${OPENSSL_VERSION}.tar.gz" ]; then
-        echo "Using pre-downloaded openssl..."
-    else
-        download "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz" "openssl-${OPENSSL_VERSION}.tar.gz"
-    fi
-    tar -xzf "openssl-${OPENSSL_VERSION}.tar.gz"
 
-    if [ -f "pcre-${PCRE_VERSION}.tar.gz" ]; then
-        echo "Using pre-downloaded pcre..."
+    if [ ! -d "openssl-${OPENSSL_VERSION}" ]; then
+        if [ -f "openssl-${OPENSSL_VERSION}.tar.gz" ]; then
+            echo "Using pre-downloaded openssl..."
+        else
+            download "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz" "openssl-${OPENSSL_VERSION}.tar.gz"
+        fi
+        tar -xzf "openssl-${OPENSSL_VERSION}.tar.gz"
     else
-        download "https://downloads.sourceforge.net/project/pcre/pcre/${PCRE_VERSION}/pcre-${PCRE_VERSION}.tar.gz" "pcre-${PCRE_VERSION}.tar.gz"
+        echo "OpenSSL already extracted at openssl-${OPENSSL_VERSION}, skipping"
     fi
-    tar -xzf "pcre-${PCRE_VERSION}.tar.gz"
 
-    if [ -f "zlib-${ZLIB_VERSION}.tar.gz" ]; then
-        echo "Using pre-downloaded zlib..."
+    if [ ! -d "pcre-${PCRE_VERSION}" ]; then
+        if [ -f "pcre-${PCRE_VERSION}.tar.gz" ]; then
+            echo "Using pre-downloaded pcre..."
+        else
+            download "https://downloads.sourceforge.net/project/pcre/pcre/${PCRE_VERSION}/pcre-${PCRE_VERSION}.tar.gz" "pcre-${PCRE_VERSION}.tar.gz"
+        fi
+        tar -xzf "pcre-${PCRE_VERSION}.tar.gz"
     else
-        download "https://github.com/madler/zlib/archive/refs/tags/v${ZLIB_VERSION}.tar.gz" "zlib-${ZLIB_VERSION}.tar.gz"
+        echo "PCRE already extracted at pcre-${PCRE_VERSION}, skipping"
     fi
-    tar -xzf "zlib-${ZLIB_VERSION}.tar.gz"
+
+    if [ ! -d "zlib-${ZLIB_VERSION}" ]; then
+        if [ -f "zlib-${ZLIB_VERSION}.tar.gz" ]; then
+            echo "Using pre-downloaded zlib..."
+        else
+            download "https://github.com/madler/zlib/archive/refs/tags/v${ZLIB_VERSION}.tar.gz" "zlib-${ZLIB_VERSION}.tar.gz"
+        fi
+        tar -xzf "zlib-${ZLIB_VERSION}.tar.gz"
+    else
+        echo "zlib already extracted at zlib-${ZLIB_VERSION}, skipping"
+    fi
 }
 
 configure_and_build() {
