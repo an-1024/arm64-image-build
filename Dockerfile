@@ -41,13 +41,8 @@ RUN set -eux; \
     mv "$JDK_DIR" /opt/java/jdk21; \
     rm -f /tmp/jdk21.tar.gz
 
-# LibreOffice ARM64 RPMs
-COPY rpm/ /tmp/rpms/
+# LibreOffice: verify from base image
 RUN set -eux; \
-    if ls /tmp/rpms/*.rpm >/dev/null 2>&1; then \
-        rpm -ivh --nodeps --force /tmp/rpms/*.rpm; \
-        rm -rf /tmp/rpms; \
-    fi; \
     if ! command -v libreoffice >/dev/null 2>&1; then \
         LO_DIR=$(ls -d /opt/libreoffice* 2>/dev/null || true); \
         if [ -n "$LO_DIR" ]; then \
