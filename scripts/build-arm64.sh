@@ -75,6 +75,19 @@ if [ ! -f jdk21.tar.gz ]; then
 fi
 ls -lh jdk21.tar.gz 2>/dev/null || echo "no jdk21.tar.gz (will download in container)"
 
+# Download nginx and redis source tarballs for in-container compilation
+if [ ! -f "nginx-${NGINX_VERSION}.tar.gz" ]; then
+    echo "Downloading nginx ${NGINX_VERSION} source..."
+    curl -fsSL -L -o "nginx-${NGINX_VERSION}.tar.gz" \
+        "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz"
+fi
+if [ ! -f "redis-${REDIS_VERSION}.tar.gz" ]; then
+    echo "Downloading redis ${REDIS_VERSION} source..."
+    curl -fsSL -L -o "redis-${REDIS_VERSION}.tar.gz" \
+        "https://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz"
+fi
+ls -lh "nginx-${NGINX_VERSION}.tar.gz" "redis-${REDIS_VERSION}.tar.gz" 2>/dev/null || echo "source tarballs missing"
+
 # If still no packages, create empty dirs so Docker COPY doesn't fail
 mkdir -p packages x11-deps tools-rpms
 

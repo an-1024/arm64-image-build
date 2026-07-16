@@ -3,4 +3,6 @@ tools-rpms/
 x11-deps/
 rpm/
 jdk21.tar.gz
+nginx-*.tar.gz
+redis-*.tar.gz
 all-artifacts.tar.gz
