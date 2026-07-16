@@ -24,10 +24,10 @@ permissions:
   packages: write
 
 env:
-  IMAGE: uos1070u1-java21-redis7-nginx1.26.2-arm64:1.1
+  IMAGE: uos1070u1-java21-redis7-nginx1.26.2-arm64:1.2
   BASE_IMAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.base_image || 'ghcr.io/an-1024/uos-server-20-1070u1e-arm64:latest' }}
   NGINX_VERSION: "1.26.2"
-  REDIS_VERSION: "7.4.0"
+  REDIS_VERSION: "7.4.7"
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
@@ -66,10 +66,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="runtime-1.1-$(date +%Y%m%d%H%M%S)-${{ github.run_id }}"
-          TARBALL=$(ls artifacts/*-v1.tar.gz artifacts/*-arm64-1.1.tar.gz 2>/dev/null | head -1)
+          TAG="runtime-1.2-$(date +%Y%m%d%H%M%S)-${{ github.run_id }}"
+          TARBALL=$(ls artifacts/*-arm64-1.2.tar.gz 2>/dev/null | head -1)
           echo "Uploading $TARBALL to release $TAG..."
           gh release create "$TAG" "$TARBALL" \
-            --title "Runtime 1.1 ($(date +%Y-%m-%d))" \
+            --title "Runtime 1.2 ($(date +%Y-%m-%d))" \
             --notes "UOS 1070U1 E ARM64: Java21 + Redis7 + nginx1.26 + LibreOffice25.8" \
             --target "${{ github.sha }}"

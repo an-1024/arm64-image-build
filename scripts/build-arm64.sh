@@ -1,10 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-IMAGE=${IMAGE:-uos1070u1-java21-redis7-nginx1.26.2-arm64:1.1}
+IMAGE=${IMAGE:-uos1070u1-java21-redis7-nginx1.26.2-arm64:1.2}
 BASE_IMAGE=${BASE_IMAGE:-ghcr.io/an-1024/uos-server-20-1070u1e-arm64:latest}
 NGINX_VERSION=${NGINX_VERSION:-1.26.2}
-REDIS_VERSION=${REDIS_VERSION:-7.4.0}
+REDIS_VERSION=${REDIS_VERSION:-7.4.7}
 OUTPUT_DIR=${OUTPUT_DIR:-artifacts}
 
 host_arch=$(uname -m)
@@ -76,7 +76,7 @@ fi
 ls -lh jdk21.tar.gz 2>/dev/null || echo "no jdk21.tar.gz (will download in container)"
 
 # If still no packages, create empty dirs so Docker COPY doesn't fail
-mkdir -p packages x11-deps
+mkdir -p packages x11-deps tools-rpms
 
 pull_image "$BASE_IMAGE"
 
@@ -107,13 +107,13 @@ docker cp "$container_id:/opt/build-audit/." "$OUTPUT_DIR/dependency-audit/" 2>/
 
 # Version logs
 mkdir -p "$OUTPUT_DIR/dependency-audit"
-docker run --rm "$IMAGE" sh -c 'nginx -v 2>&1; redis-server --version 2>&1; java -version 2>&1; libreoffice --version 2>&1' \
+docker run --rm "$IMAGE" sh -c 'nginx -v 2>&1; redis-server --version 2>&1; java -version 2>&1; libreoffice --version 2>&1; command -v netstat >/dev/null 2>&1 && echo "netstat OK" || echo "netstat missing"; command -v vim >/dev/null 2>&1 && echo "vim OK" || echo "vim missing"' \
     > "$OUTPUT_DIR/dependency-audit/versions.log" 2>&1 || true
 
 # Package tarballs
 tar -C "$OUTPUT_DIR/rootfs-export" -czf "$OUTPUT_DIR/nginx-${NGINX_VERSION}-arm64.tar.gz" nginx 2>/dev/null || true
 tar -C "$OUTPUT_DIR/rootfs-export" -czf "$OUTPUT_DIR/jdk21-arm64.tar.gz" jdk21 2>/dev/null || true
-docker save "$IMAGE" | gzip > "$OUTPUT_DIR/uos1070u1-java21-redis7-nginx${NGINX_VERSION}-arm64-1.1.tar.gz"
+docker save "$IMAGE" | gzip > "$OUTPUT_DIR/uos1070u1-java21-redis7-nginx${NGINX_VERSION}-arm64-1.2.tar.gz"
 
 rm -rf "$OUTPUT_DIR/rootfs-export"
 
@@ -122,4 +122,4 @@ echo "Build complete: $IMAGE"
 echo "Artifacts:"
 ls -lh "$OUTPUT_DIR/"*.tar.gz 2>/dev/null || echo "  (no tar.gz artifacts)"
 echo ""
-echo "Main image archive: $OUTPUT_DIR/uos1070u1-java21-redis7-nginx${NGINX_VERSION}-arm64-1.1.tar.gz"
+echo "Main image archive: $OUTPUT_DIR/uos1070u1-java21-redis7-nginx${NGINX_VERSION}-arm64-1.2.tar.gz"
