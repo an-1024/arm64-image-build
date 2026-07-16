@@ -11,19 +11,16 @@ ARG REDIS_VERSION
 # Replace broken UOS repos with openEuler 20.03 public repos
 RUN set -eux; \
     rm -f /etc/yum.repos.d/*.repo; \
-    cat > /etc/yum.repos.d/oe2003.repo << 'REPO'
-[oe2003-os]
-name=openEuler 20.03 OS
-baseurl=https://repo.openeuler.org/openEuler-20.03-LTS-SP2/OS/aarch64/
-enabled=1
-gpgcheck=0
-
-[oe2003-epol]
-name=openEuler 20.03 EPOL
-baseurl=https://repo.openeuler.org/openEuler-20.03-LTS-SP2/EPOL/main/aarch64/
-enabled=1
-gpgcheck=0
-REPO
+    echo '[oe2003-os]' > /etc/yum.repos.d/oe2003.repo; \
+    echo 'name=openEuler 20.03 OS' >> /etc/yum.repos.d/oe2003.repo; \
+    echo 'baseurl=https://repo.openeuler.org/openEuler-20.03-LTS-SP2/OS/aarch64/' >> /etc/yum.repos.d/oe2003.repo; \
+    echo 'enabled=1' >> /etc/yum.repos.d/oe2003.repo; \
+    echo 'gpgcheck=0' >> /etc/yum.repos.d/oe2003.repo; \
+    echo '[oe2003-epol]' >> /etc/yum.repos.d/oe2003.repo; \
+    echo 'name=openEuler 20.03 EPOL' >> /etc/yum.repos.d/oe2003.repo; \
+    echo 'baseurl=https://repo.openeuler.org/openEuler-20.03-LTS-SP2/EPOL/main/aarch64/' >> /etc/yum.repos.d/oe2003.repo; \
+    echo 'enabled=1' >> /etc/yum.repos.d/oe2003.repo; \
+    echo 'gpgcheck=0' >> /etc/yum.repos.d/oe2003.repo; \
     yum install -y gcc make pcre-devel zlib-devel openssl-devel tar gzip && yum clean all
 
 COPY nginx-${NGINX_VERSION}.tar.gz /tmp/nginx-${NGINX_VERSION}.tar.gz
