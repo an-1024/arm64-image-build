@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+export MALLOC=libc
+
 REDIS_CONF=${REDIS_CONF:-/etc/redis/redis.conf}
 NGINX_CONF=${NGINX_CONF:-/etc/nginx/nginx.conf}
 APP_JAR=${APP_JAR:-/opt/app/app.jar}

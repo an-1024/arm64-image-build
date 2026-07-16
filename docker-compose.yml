@@ -1,13 +1,13 @@
 services:
   runtime:
-    image: uos1070u1-java21-redis7-nginx1.31.2-arm64:v1
+    image: uos1070u1-java21-redis7-nginx1.26.2-arm64:1.2
     build:
       context: .
       dockerfile: Dockerfile
       args:
         BASE_IMAGE: ghcr.io/an-1024/uos-server-20-1070u1e-arm64:latest
-        NGINX_VERSION: 1.31.2
-        REDIS_VERSION: 7.4.9
+        NGINX_VERSION: 1.26.2
+        REDIS_VERSION: 7.4.7
     platform: linux/arm64
     ports:
       - "80:80"
