@@ -69,9 +69,7 @@ fi
 if [ ! -f jdk21.tar.gz ]; then
     echo "Downloading JDK21..."
     curl -fsSL -L -o jdk21.tar.gz \
-        "https://api.adoptium.net/v3/binary/latest/21/ga/linux/aarch64/jdk/hotspot/normal/eclipse?project=jdk" || {
-        echo "JDK download failed, will try inside container"
-    }
+        "https://api.adoptium.net/v3/binary/latest/21/ga/linux/aarch64/jdk/hotspot/normal/eclipse?project=jdk" || echo "JDK download failed"
 fi
 ls -lh jdk21.tar.gz 2>/dev/null || echo "no jdk21.tar.gz (will download in container)"
 
@@ -79,12 +77,12 @@ ls -lh jdk21.tar.gz 2>/dev/null || echo "no jdk21.tar.gz (will download in conta
 if [ ! -f "nginx-${NGINX_VERSION}.tar.gz" ]; then
     echo "Downloading nginx ${NGINX_VERSION} source..."
     curl -fsSL -L -o "nginx-${NGINX_VERSION}.tar.gz" \
-        "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz"
+        "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" || echo "nginx download failed"
 fi
 if [ ! -f "redis-${REDIS_VERSION}.tar.gz" ]; then
     echo "Downloading redis ${REDIS_VERSION} source..."
     curl -fsSL -L -o "redis-${REDIS_VERSION}.tar.gz" \
-        "https://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz"
+        "https://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz" || echo "redis download failed"
 fi
 ls -lh "nginx-${NGINX_VERSION}.tar.gz" "redis-${REDIS_VERSION}.tar.gz" 2>/dev/null || echo "source tarballs missing"
 
