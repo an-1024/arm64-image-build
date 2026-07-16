@@ -2,13 +2,29 @@ ARG BASE_IMAGE=ghcr.io/an-1024/uos-server-20-1070u1e-arm64:latest
 ARG NGINX_VERSION=1.26.2
 ARG REDIS_VERSION=7.4.7
 
-# ===== Builder stage: openEuler 20.03 (same glibc 2.28 as UOS 1070U1) =====
-FROM openeuler/openeuler:20.03-LTS-SP2 AS builder
+# ===== Builder stage: UOS 1070U1 with openEuler 20.03 repos =====
+FROM ${BASE_IMAGE} AS builder
 
 ARG NGINX_VERSION
 ARG REDIS_VERSION
 
-RUN yum install -y gcc make pcre-devel zlib-devel openssl-devel wget tar gzip && yum clean all
+# Replace broken UOS repos with openEuler 20.03 public repos
+RUN set -eux; \
+    rm -f /etc/yum.repos.d/*.repo; \
+    cat > /etc/yum.repos.d/oe2003.repo << 'REPO'
+[oe2003-os]
+name=openEuler 20.03 OS
+baseurl=https://repo.openeuler.org/openEuler-20.03-LTS-SP2/OS/aarch64/
+enabled=1
+gpgcheck=0
+
+[oe2003-epol]
+name=openEuler 20.03 EPOL
+baseurl=https://repo.openeuler.org/openEuler-20.03-LTS-SP2/EPOL/main/aarch64/
+enabled=1
+gpgcheck=0
+REPO
+    yum install -y gcc make pcre-devel zlib-devel openssl-devel tar gzip && yum clean all
 
 COPY nginx-${NGINX_VERSION}.tar.gz /tmp/nginx-${NGINX_VERSION}.tar.gz
 COPY redis-${REDIS_VERSION}.tar.gz /tmp/redis-${REDIS_VERSION}.tar.gz
@@ -39,27 +55,23 @@ LABEL org.opencontainers.image.title="UOS 1070U1 E ARM64 Java21 Redis7 Nginx Lib
       org.opencontainers.image.base.name="${BASE_IMAGE}" \
       org.opencontainers.image.description="UOS 1070U1 E ARM64 runtime with Java 21, Redis ${REDIS_VERSION}, nginx ${NGINX_VERSION}, LibreOffice"
 
-# Copy compiled binaries
 COPY --from=builder /usr/local/nginx/sbin/nginx /usr/sbin/nginx
 COPY --from=builder /usr/local/nginx/conf/ /etc/nginx/
 COPY --from=builder /usr/local/bin/redis-server /usr/bin/redis-server
 COPY --from=builder /usr/local/bin/redis-cli /usr/bin/redis-cli
 
-# X11 deps RPMs (LibreOffice)
 COPY x11-deps/ /tmp/x11-deps/
 RUN if ls /tmp/x11-deps/*.rpm >/dev/null 2>&1; then \
         rpm -ivh --nodeps --force /tmp/x11-deps/*.rpm; \
         rm -rf /tmp/x11-deps; \
     fi
 
-# 运维工具 RPMs
 COPY tools-rpms/ /tmp/tools-rpms/
 RUN if ls /tmp/tools-rpms/*.rpm >/dev/null 2>&1; then \
         rpm -ivh --nodeps --force /tmp/tools-rpms/*.rpm; \
         rm -rf /tmp/tools-rpms; \
     fi
 
-# JDK21
 COPY jdk21.tar.gz /tmp/jdk21.tar.gz
 RUN mkdir -p /opt/java && \
     tar -xzf /tmp/jdk21.tar.gz -C /opt/java && \
@@ -67,13 +79,11 @@ RUN mkdir -p /opt/java && \
     mv "$JDK_DIR" /opt/java/jdk21 && \
     rm -f /tmp/jdk21.tar.gz
 
-# LibreOffice
 RUN if ! command -v libreoffice >/dev/null 2>&1; then \
         LO_DIR=$(ls -d /opt/libreoffice* 2>/dev/null || true); \
         [ -n "$LO_DIR" ] && ln -sf "$LO_DIR/program/soffice" /usr/bin/libreoffice; \
     fi
 
-# Config
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY redis/redis.conf /etc/redis/redis.conf
 COPY entrypoint.sh /entrypoint.sh
