@@ -1,4 +1,10 @@
-name: Security Scan
+name: Security Scan (Optional CI)
+
+# =============================================================
+# 可选安全扫描 CI (主构建环境是 Ubuntu 虚拟机 10.211.55.4)
+# 此 workflow 用于 GitHub 上的备份安全扫描, 非主路径.
+# 主路径: 在 Ubuntu 上构建后手动跑 trivy image
+# =============================================================
 
 on:
   workflow_dispatch:
@@ -8,14 +14,11 @@ on:
         required: true
         default: ghcr.io/an-1024/uos-server-20-1070u1e-arm64:latest
         type: string
-      use_bundled_deps:
-        description: Build OpenSSL, PCRE, and zlib from source inside the UOS builder stage
+      nginx_src_image:
+        description: nginx source image (UnionTech)
         required: true
-        default: "1"
-        type: choice
-        options:
-          - "0"
-          - "1"
+        default: registry.uniontech.com/uos-app/uos-server-25-nginx:1.26.2
+        type: string
   push:
     branches:
       - main
@@ -42,11 +45,11 @@ permissions:
   packages: write
 
 env:
-  IMAGE: uos1070u1-java21-redis7-nginx1.26.2-arm64:1.2
+  IMAGE: uos1070u1-java21-redis7-nginx1.26.2-arm64:v1.3
   BASE_IMAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.base_image || 'ghcr.io/an-1024/uos-server-20-1070u1e-arm64:latest' }}
-  NGINX_VERSION: "1.26.2"
+  NGINX_SRC_IMAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.nginx_src_image || 'registry.uniontech.com/uos-app/uos-server-25-nginx:1.26.2' }}
   REDIS_VERSION: "7.4.7"
-  USE_BUNDLED_DEPS: ${{ github.event_name == 'workflow_dispatch' && inputs.use_bundled_deps || '1' }}
+  IMAGE_VERSION: "1.3"
   UNIONTECH_REGISTRY_USERNAME: ${{ secrets.UNIONTECH_REGISTRY_USERNAME }}
   UNIONTECH_REGISTRY_PASSWORD: ${{ secrets.UNIONTECH_REGISTRY_PASSWORD }}
 
@@ -65,6 +68,9 @@ jobs:
         with:
           platforms: arm64
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Login to UnionTech registry
         if: env.UNIONTECH_REGISTRY_USERNAME != '' && env.UNIONTECH_REGISTRY_PASSWORD != ''
         uses: docker/login-action@v3
@@ -73,20 +79,11 @@ jobs:
           username: ${{ env.UNIONTECH_REGISTRY_USERNAME }}
           password: ${{ env.UNIONTECH_REGISTRY_PASSWORD }}
 
-      # GHCR login disabled — package is public, anonymous pull works
-      # - name: Login to GitHub Container Registry
-      #   if: startsWith(env.BASE_IMAGE, 'ghcr.io/')
-      #   uses: docker/login-action@v3
-      #   with:
-      #     registry: ghcr.io
-      #     username: ${{ github.actor }}
-      #     password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Pull base image
         run: |
           for attempt in 1 2 3; do
             echo "Pulling base image (${attempt}/3): ${BASE_IMAGE}"
-            if docker pull "$BASE_IMAGE"; then
+            if docker pull --platform linux/arm64 "$BASE_IMAGE" 2>/dev/null || docker pull "$BASE_IMAGE"; then
               exit 0
             fi
             sleep 20
@@ -95,12 +92,13 @@ jobs:
 
       - name: Build image
         run: |
-          docker build \
+          docker buildx build \
             --platform linux/arm64 \
+            --load \
             --build-arg BASE_IMAGE="$BASE_IMAGE" \
-            --build-arg NGINX_VERSION="$NGINX_VERSION" \
+            --build-arg NGINX_SRC_IMAGE="$NGINX_SRC_IMAGE" \
             --build-arg REDIS_VERSION="$REDIS_VERSION" \
-            --build-arg USE_BUNDLED_DEPS="$USE_BUNDLED_DEPS" \
+            --build-arg IMAGE_VERSION="$IMAGE_VERSION" \
             -t "$IMAGE" \
             .
 
@@ -148,7 +146,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: uos1070u1-security-scan
+          name: uos1070u1-security-scan-v1.3
           path: artifacts/security-scan/**
           if-no-files-found: warn
           retention-days: 14

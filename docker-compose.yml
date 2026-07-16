@@ -1,13 +1,14 @@
 services:
   runtime:
-    image: uos1070u1-java21-redis7-nginx1.26.2-arm64:1.2
+    image: uos1070u1-java21-redis7-nginx1.26.2-arm64:v1.3
     build:
       context: .
       dockerfile: Dockerfile
       args:
         BASE_IMAGE: ghcr.io/an-1024/uos-server-20-1070u1e-arm64:latest
-        NGINX_VERSION: 1.26.2
+        NGINX_SRC_IMAGE: registry.uniontech.com/uos-app/uos-server-25-nginx:1.26.2
         REDIS_VERSION: 7.4.7
+        IMAGE_VERSION: "1.3"
     platform: linux/arm64
     ports:
       - "80:80"
@@ -15,9 +16,16 @@ services:
       - "8080:8080"
     environment:
       JAVA_OPTS: "-XX:MaxRAMPercentage=75"
+      REDIS_PASSWORD: "gaojing_5211"
     volumes:
+      # 应用 jar (PVC 挂载)
       - ./app:/opt/app
+      # 前端资源 (PVC 挂载)
+      - ./web/dist:/opt/web/dist
+      - ./web/mobile:/opt/web/mobile
+      # 持久化数据 (PVC 挂载)
       - runtime-data:/data
+      # 日志 (PVC 挂载)
       - runtime-logs:/logs
 
 volumes:

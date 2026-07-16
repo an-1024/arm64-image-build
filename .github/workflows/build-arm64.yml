@@ -1,4 +1,10 @@
-name: Build ARM64 Runtime
+name: Build ARM64 Runtime (Optional CI)
+
+# =============================================================
+# 可选 CI 构建 (主构建环境是 Ubuntu 虚拟机 10.211.55.4)
+# 此 workflow 用于 GitHub 上的备份构建和验证, 非主路径.
+# 主路径: 在 Ubuntu 上直接跑 scripts/build-arm64.sh
+# =============================================================
 
 on:
   workflow_dispatch:
@@ -7,6 +13,11 @@ on:
         description: UOS base image reachable from the GitHub runner
         required: true
         default: ghcr.io/an-1024/uos-server-20-1070u1e-arm64:latest
+        type: string
+      nginx_src_image:
+        description: nginx source image (UnionTech)
+        required: true
+        default: registry.uniontech.com/uos-app/uos-server-25-nginx:1.26.2
         type: string
   push:
     branches:
@@ -24,15 +35,15 @@ permissions:
   packages: write
 
 env:
-  IMAGE: uos1070u1-java21-redis7-nginx1.26.2-arm64:1.2
+  IMAGE: uos1070u1-java21-redis7-nginx1.26.2-arm64:v1.3
   BASE_IMAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.base_image || 'ghcr.io/an-1024/uos-server-20-1070u1e-arm64:latest' }}
-  NGINX_VERSION: "1.26.2"
+  NGINX_SRC_IMAGE: ${{ github.event_name == 'workflow_dispatch' && inputs.nginx_src_image || 'registry.uniontech.com/uos-app/uos-server-25-nginx:1.26.2' }}
   REDIS_VERSION: "7.4.7"
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  IMAGE_VERSION: "1.3"
 
 jobs:
   build:
-    name: Build and verify ARM64 image
+    name: Build and verify ARM64 image (optional CI)
     runs-on: ubuntu-latest
     timeout-minutes: 180
 
@@ -45,6 +56,20 @@ jobs:
         with:
           platforms: arm64
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to UnionTech registry
+        env:
+          UNIONTECH_REGISTRY_USERNAME: ${{ secrets.UNIONTECH_REGISTRY_USERNAME }}
+          UNIONTECH_REGISTRY_PASSWORD: ${{ secrets.UNIONTECH_REGISTRY_PASSWORD }}
+        if: env.UNIONTECH_REGISTRY_USERNAME != '' && env.UNIONTECH_REGISTRY_PASSWORD != ''
+        uses: docker/login-action@v3
+        with:
+          registry: registry.uniontech.com
+          username: ${{ env.UNIONTECH_REGISTRY_USERNAME }}
+          password: ${{ env.UNIONTECH_REGISTRY_PASSWORD }}
+
       - name: Build, verify, and export artifacts
         env:
           ALLOW_NON_ARM64_BUILD: "1"
@@ -55,21 +80,8 @@ jobs:
       - name: Upload runtime artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: uos1070u1-runtime-arm64
+          name: uos1070u1-runtime-arm64-v1.3
           path: |
             artifacts/*.tar.gz
-            artifacts/dependency-audit/**
           if-no-files-found: error
           retention-days: 14
-
-      - name: Upload raw tarball to Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="runtime-1.2-$(date +%Y%m%d%H%M%S)-${{ github.run_id }}"
-          TARBALL=$(ls artifacts/*-arm64-1.2.tar.gz 2>/dev/null | head -1)
-          echo "Uploading $TARBALL to release $TAG..."
-          gh release create "$TAG" "$TARBALL" \
-            --title "Runtime 1.2 ($(date +%Y-%m-%d))" \
-            --notes "UOS 1070U1 E ARM64: Java21 + Redis7 + nginx1.26 + LibreOffice25.8" \
-            --target "${{ github.sha }}"

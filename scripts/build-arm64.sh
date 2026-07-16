@@ -1,136 +1,185 @@
 #!/bin/bash
+# =============================================================
+# build-arm64.sh
+# 主构建环境: Ubuntu x86_64 (10.211.55.4) + buildx + QEMU
+# 构建: linux/arm64 镜像
+#
+# 前置条件:
+#   1. 已安装 docker + buildx 插件
+#   2. 已注册 QEMU (本脚本会自动注册)
+#   3. 能访问 registry.uniontech.com (拉取 nginx 源镜像)
+#   4. 能访问 ghcr.io (拉取 uos-20 base 镜像)
+#   5. 能访问 adoptium.net (下载 JDK21)
+#   6. 能访问 download.redis.io (下载 redis 源码)
+#
+# 可选前置:
+#   - 跑过 prepare-packages.sh (仅诊断用途, 非构建必需)
+#   - x11-deps/ 和 libreoffice-rpms/ 已就绪
+#
+# 产物:
+#   artifacts/uos1070u1-runtime-arm64-v1.3.tar.gz
+# =============================================================
 set -euo pipefail
 
-IMAGE=${IMAGE:-uos1070u1-java21-redis7-nginx1.26.2-arm64:1.2}
+IMAGE=${IMAGE:-uos1070u1-java21-redis7-nginx1.26.2-arm64:v1.3}
 BASE_IMAGE=${BASE_IMAGE:-ghcr.io/an-1024/uos-server-20-1070u1e-arm64:latest}
-NGINX_VERSION=${NGINX_VERSION:-1.26.2}
+NGINX_SRC_IMAGE=${NGINX_SRC_IMAGE:-registry.uniontech.com/uos-app/uos-server-25-nginx:1.26.2}
 REDIS_VERSION=${REDIS_VERSION:-7.4.7}
+IMAGE_VERSION=${IMAGE_VERSION:-1.3}
 OUTPUT_DIR=${OUTPUT_DIR:-artifacts}
 
-host_arch=$(uname -m)
-if [ "$host_arch" != "aarch64" ] && [ "$host_arch" != "arm64" ] && [ "${ALLOW_NON_ARM64_BUILD:-0}" != "1" ]; then
-    echo "This build is intended for a native ARM64 runner. Host architecture: $host_arch" >&2
-    echo "Set ALLOW_NON_ARM64_BUILD=1 only for explicit emulated builds." >&2
-    exit 1
-fi
-
-command -v docker >/dev/null 2>&1 || {
-    echo "docker is required" >&2
-    exit 1
-}
+echo "============================================"
+echo "Build ARM64 Runtime Image v${IMAGE_VERSION}"
+echo "============================================"
+echo "Image:          ${IMAGE}"
+echo "Base image:     ${BASE_IMAGE}"
+echo "nginx source:   ${NGINX_SRC_IMAGE}"
+echo "redis version:  ${REDIS_VERSION}"
+echo "Output dir:     ${OUTPUT_DIR}"
+echo ""
 
 mkdir -p "$OUTPUT_DIR"
 
+# ===== 0. 环境检查 =====
+echo "[0/5] Environment check..."
+
+command -v docker >/dev/null 2>&1 || {
+    echo "ERROR: docker is required" >&2
+    exit 1
+}
+echo "  -> docker: $(docker --version)"
+
+command -v docker buildx >/dev/null 2>&1 || {
+    echo "ERROR: docker buildx is required (install: https://github.com/docker/buildx/releases)" >&2
+    exit 1
+}
+echo "  -> buildx: $(docker buildx version)"
+
+# 注册 QEMU (支持 x86_64 主机上运行 arm64 容器)
+echo "  -> Registering QEMU for cross-platform build..."
+docker run --rm --privileged multiarch/qemu-user-static --reset -p yes >/dev/null 2>&1 || {
+    echo "ERROR: Failed to register QEMU. Try:" >&2
+    echo "  docker run --rm --privileged multiarch/qemu-user-static --reset -p yes" >&2
+    exit 1
+}
+echo "  -> QEMU registered"
+
+# 检查 buildx builder 是否支持 linux/arm64
+if ! docker buildx inspect default 2>/dev/null | grep -q "linux/arm64"; then
+    echo "  -> Creating buildx builder with arm64 support..."
+    docker buildx create --name arm64builder --driver docker-container --use 2>/dev/null || true
+    docker buildx inspect arm64builder --bootstrap >/dev/null 2>&1 || true
+fi
+echo ""
+
+# ===== 1. 下载 JDK21 + redis 源码 =====
+echo "[1/5] Downloading dependencies..."
+
+if [ ! -f jdk21.tar.gz ]; then
+    echo "  -> Downloading JDK 21 (Adoptium Temurin, aarch64)..."
+    curl -fsSL -L -o jdk21.tar.gz \
+        "https://api.adoptium.net/v3/binary/latest/21/ga/linux/aarch64/jdk/hotspot/normal/eclipse?project=jdk" \
+        || { echo "ERROR: JDK download failed" >&2; exit 1; }
+else
+    echo "  -> jdk21.tar.gz already exists, skip"
+fi
+ls -lh jdk21.tar.gz
+
+if [ ! -f "redis-${REDIS_VERSION}.tar.gz" ]; then
+    echo "  -> Downloading redis ${REDIS_VERSION} source..."
+    curl -fsSL -L -o "redis-${REDIS_VERSION}.tar.gz" \
+        "https://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz" \
+        || { echo "ERROR: redis source download failed" >&2; exit 1; }
+else
+    echo "  -> redis-${REDIS_VERSION}.tar.gz already exists, skip"
+fi
+ls -lh "redis-${REDIS_VERSION}.tar.gz"
+echo ""
+
+# ===== 2. 检查本地依赖目录 =====
+echo "[2/5] Checking local dependency directories..."
+
+mkdir -p x11-deps libreoffice-rpms
+
+if ls x11-deps/*.rpm >/dev/null 2>&1; then
+    echo "  -> x11-deps/: $(ls x11-deps/*.rpm 2>/dev/null | wc -l) rpm files"
+else
+    echo "  -> WARNING: x11-deps/ is empty (LibreOffice may fail to start)"
+fi
+
+lo_rpm_count=$(find libreoffice-rpms -name "*.rpm" -type f 2>/dev/null | wc -l)
+if [ "$lo_rpm_count" -gt 0 ]; then
+    echo "  -> libreoffice-rpms/: ${lo_rpm_count} rpm files"
+else
+    echo "  -> WARNING: libreoffice-rpms/ is empty (LibreOffice will not be installed)"
+fi
+echo ""
+
+# ===== 3. 拉取基础镜像和 nginx 源镜像 =====
+echo "[3/5] Pulling base images..."
+
 pull_image() {
     local image=$1
-    local attempts=${PULL_RETRIES:-3}
-    local delay=${PULL_RETRY_DELAY_SECONDS:-20}
+    local label=$2
+    local attempts=3
+    local delay=10
     local attempt
 
     for ((attempt = 1; attempt <= attempts; attempt++)); do
-        echo "Pulling base image (${attempt}/${attempts}): ${image}"
-        if docker pull "$image"; then
+        echo "  -> Pulling ${label} (${attempt}/${attempts}): ${image}"
+        if docker pull --platform linux/arm64 "$image" 2>/dev/null || docker pull "$image"; then
             return 0
         fi
-        if [ "$attempt" -lt "$attempts" ]; then
-            sleep "$delay"
-        fi
+        [ "$attempt" -lt "$attempts" ] && sleep "$delay"
     done
 
-    echo "Failed to pull base image after ${attempts} attempts: ${image}" >&2
+    echo "ERROR: Failed to pull ${label} after ${attempts} attempts: ${image}" >&2
     return 1
 }
 
-# ===== Download packages if not present locally =====
-if [ ! -d packages ] || [ -z "$(ls -A packages 2>/dev/null)" ]; then
-    echo "Downloading pre-built packages from GitHub Release..."
-    if command -v gh >/dev/null 2>&1; then
-        gh release download v1-packages --pattern "packages-arm64.tar.gz" --dir . 2>/dev/null || true
-    fi
-    if [ ! -f packages-arm64.tar.gz ]; then
-        echo "gh failed, trying curl..."
-        curl -fsSL -L "https://github.com/an-1024/arm64-image-build/releases/download/v1-packages/packages-arm64.tar.gz" \
-            -o packages-arm64.tar.gz || true
-    fi
-    if [ ! -f packages-arm64.tar.gz ]; then
-        echo "No packages found, creating empty dirs"
-        mkdir -p packages tools
-    fi
-    if [ -f packages-arm64.tar.gz ]; then
-        echo "Extracting packages..."
-        tar -xzf packages-arm64.tar.gz
-        rm -f packages-arm64.tar.gz
-        [ -d packages-arm64 ] && mv packages-arm64 packages
-        [ -d x11-deps-arm64 ] && mv x11-deps-arm64 x11-deps
-    fi
-fi
+pull_image "$BASE_IMAGE" "UOS base image"
+pull_image "$NGINX_SRC_IMAGE" "nginx source image"
+echo ""
 
-# Download JDK21 on the host (GitHub runner has network access)
-if [ ! -f jdk21.tar.gz ]; then
-    echo "Downloading JDK21..."
-    curl -fsSL -L -o jdk21.tar.gz \
-        "https://api.adoptium.net/v3/binary/latest/21/ga/linux/aarch64/jdk/hotspot/normal/eclipse?project=jdk" || echo "JDK download failed"
-fi
-ls -lh jdk21.tar.gz 2>/dev/null || echo "no jdk21.tar.gz (will download in container)"
+# ===== 4. 构建镜像 =====
+echo "[4/5] Building ARM64 image..."
 
-# Download nginx and redis source tarballs for in-container compilation
-if [ ! -f "nginx-${NGINX_VERSION}.tar.gz" ]; then
-    echo "Downloading nginx ${NGINX_VERSION} source..."
-    curl -fsSL -L -o "nginx-${NGINX_VERSION}.tar.gz" \
-        "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" || echo "nginx download failed"
-fi
-if [ ! -f "redis-${REDIS_VERSION}.tar.gz" ]; then
-    echo "Downloading redis ${REDIS_VERSION} source..."
-    curl -fsSL -L -o "redis-${REDIS_VERSION}.tar.gz" \
-        "https://download.redis.io/releases/redis-${REDIS_VERSION}.tar.gz" || echo "redis download failed"
-fi
-ls -lh "nginx-${NGINX_VERSION}.tar.gz" "redis-${REDIS_VERSION}.tar.gz" 2>/dev/null || echo "source tarballs missing"
+chmod +x entrypoint.sh scripts/*.sh 2>/dev/null || true
 
-# If still no packages, create empty dirs so Docker COPY doesn't fail
-mkdir -p packages x11-deps tools-rpms
-
-pull_image "$BASE_IMAGE"
-
-docker build \
+docker buildx build \
     --platform linux/arm64 \
+    --load \
     --build-arg BASE_IMAGE="$BASE_IMAGE" \
-    --build-arg NGINX_VERSION="$NGINX_VERSION" \
+    --build-arg NGINX_SRC_IMAGE="$NGINX_SRC_IMAGE" \
     --build-arg REDIS_VERSION="$REDIS_VERSION" \
+    --build-arg IMAGE_VERSION="$IMAGE_VERSION" \
     -t "$IMAGE" \
     .
 
-IMAGE="$IMAGE" NGINX_VERSION="$NGINX_VERSION" REDIS_VERSION="$REDIS_VERSION" ./scripts/verify.sh
+echo "  -> Image built: $IMAGE"
+echo ""
 
-container_id=$(docker create "$IMAGE")
-cleanup() {
-    docker rm -f "$container_id" >/dev/null 2>&1 || true
-}
-trap cleanup EXIT
+# ===== 5. 验证 + 导出 =====
+echo "[5/5] Verifying and exporting..."
 
-rm -rf "$OUTPUT_DIR/rootfs-export"
-mkdir -p "$OUTPUT_DIR/rootfs-export" "$OUTPUT_DIR/dependency-audit"
+# 验证
+IMAGE="$IMAGE" REDIS_VERSION="$REDIS_VERSION" ./scripts/verify.sh
 
-# Export components
-docker cp "$container_id:/usr/sbin/nginx" "$OUTPUT_DIR/rootfs-export/nginx" 2>/dev/null || true
-docker cp "$container_id:/usr/bin/redis-server" "$OUTPUT_DIR/rootfs-export/redis-server" 2>/dev/null || true
-docker cp "$container_id:/opt/java/jdk21" "$OUTPUT_DIR/rootfs-export/jdk21" 2>/dev/null || true
-docker cp "$container_id:/opt/build-audit/." "$OUTPUT_DIR/dependency-audit/" 2>/dev/null || true
-
-# Version logs
-mkdir -p "$OUTPUT_DIR/dependency-audit"
-docker run --rm "$IMAGE" sh -c 'nginx -v 2>&1; redis-server --version 2>&1; java -version 2>&1; libreoffice --version 2>&1; command -v netstat >/dev/null 2>&1 && echo "netstat OK" || echo "netstat missing"; command -v vim >/dev/null 2>&1 && echo "vim OK" || echo "vim missing"' \
-    > "$OUTPUT_DIR/dependency-audit/versions.log" 2>&1 || true
-
-# Package tarballs
-tar -C "$OUTPUT_DIR/rootfs-export" -czf "$OUTPUT_DIR/nginx-${NGINX_VERSION}-arm64.tar.gz" nginx 2>/dev/null || true
-tar -C "$OUTPUT_DIR/rootfs-export" -czf "$OUTPUT_DIR/jdk21-arm64.tar.gz" jdk21 2>/dev/null || true
-docker save "$IMAGE" | gzip > "$OUTPUT_DIR/uos1070u1-java21-redis7-nginx${NGINX_VERSION}-arm64-1.2.tar.gz"
-
-rm -rf "$OUTPUT_DIR/rootfs-export"
+# 导出 tarball
+echo "  -> Exporting image tarball..."
+TARBALL_NAME="uos1070u1-runtime-arm64-v${IMAGE_VERSION}"
+docker save "$IMAGE" | gzip > "$OUTPUT_DIR/${TARBALL_NAME}.tar.gz"
 
 echo ""
+echo "============================================"
 echo "Build complete: $IMAGE"
-echo "Artifacts:"
-ls -lh "$OUTPUT_DIR/"*.tar.gz 2>/dev/null || echo "  (no tar.gz artifacts)"
 echo ""
-echo "Main image archive: $OUTPUT_DIR/uos1070u1-java21-redis7-nginx${NGINX_VERSION}-arm64-1.2.tar.gz"
+echo "Artifacts:"
+ls -lh "$OUTPUT_DIR/"*.tar.gz 2>/dev/null | sed 's/^/  /'
+echo ""
+echo "Main image archive:"
+echo "  $OUTPUT_DIR/${TARBALL_NAME}.tar.gz"
+echo ""
+echo "To load on target ARM64 server:"
+echo "  gzip -dc ${TARBALL_NAME}.tar.gz | docker load"
+echo "============================================"
