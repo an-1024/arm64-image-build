@@ -65,8 +65,13 @@ docker run --rm --privileged multiarch/qemu-user-static --reset -p yes >/dev/nul
 echo "  -> QEMU registered"
 
 # 检查 buildx builder 是否支持 linux/arm64
-if ! docker buildx inspect default 2>/dev/null | grep -q "linux/arm64"; then
-    echo "  -> Creating buildx builder with arm64 support..."
+# 优先使用 default driver (直接用主 docker, 性能最好, --load 兼容性最好)
+# 只有 default 不支持 arm64 时才创建 docker-container builder
+if docker buildx inspect default 2>/dev/null | grep -q "linux/arm64"; then
+    echo "  -> Using default buildx builder (supports arm64)"
+    docker buildx use default 2>/dev/null || true
+else
+    echo "  -> Default builder does not support arm64, creating arm64builder..."
     docker buildx create --name arm64builder --driver docker-container --use 2>/dev/null || true
     docker buildx inspect arm64builder --bootstrap >/dev/null 2>&1 || true
 fi
