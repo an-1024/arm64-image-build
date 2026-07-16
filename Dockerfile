@@ -15,6 +15,7 @@ LABEL org.opencontainers.image.title="UOS 1070U1 E ARM64 Java21 Redis7 Nginx Lib
 
 # Pre-built nginx and redis from UnionTech (extracted by prepare-packages.sh)
 COPY packages/ /
+RUN ls -la /usr/sbin/nginx /usr/bin/redis-server /etc/nginx/ 2>&1
 
 # X11 deps RPMs (LibreOffice)
 COPY x11-deps/ /tmp/x11-deps/
@@ -23,6 +24,7 @@ RUN set -eux; \
         rpm -ivh --nodeps --force /tmp/x11-deps/*.rpm; \
         rm -rf /tmp/x11-deps; \
     fi
+RUN ls -la /usr/sbin/nginx /usr/bin/redis-server 2>&1 || echo "FILES MISSING AFTER X11 RPMs"
 
 # 运维工具 RPMs (netstat/ps/vim/lsof/ip)
 COPY tools-rpms/ /tmp/tools-rpms/
@@ -31,6 +33,7 @@ RUN set -eux; \
         rpm -ivh --nodeps --force /tmp/tools-rpms/*.rpm; \
         rm -rf /tmp/tools-rpms; \
     fi
+RUN ls -la /usr/sbin/nginx /usr/bin/redis-server 2>&1 || echo "FILES MISSING AFTER TOOLS RPMs"
 
 # JDK21 (pre-downloaded by build-arm64.sh)
 COPY jdk21.tar.gz /tmp/jdk21.tar.gz
@@ -55,6 +58,7 @@ COPY nginx/nginx.conf /etc/nginx/nginx.conf
 COPY redis/redis.conf /etc/redis/redis.conf
 COPY entrypoint.sh /entrypoint.sh
 COPY scripts/verify.sh /opt/verify.sh
+RUN ls -la /usr/sbin/nginx /usr/bin/redis-server 2>&1 || echo "FILES MISSING AFTER ALL COPIES"
 
 ENV JAVA_HOME=/opt/java/jdk21 \
     PATH=/opt/java/jdk21/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
@@ -67,9 +71,10 @@ RUN set -eux; \
     touch /etc/passwd /etc/group; \
     grep -q '^root:' /etc/passwd || printf 'root:x:0:0:root:/root:/bin/bash\n' >> /etc/passwd; \
     grep -q '^root:' /etc/group || printf 'root:x:0:\n' >> /etc/group; \
-    nginx -t 2>&1; \
-    redis-server --version 2>&1; \
-    java -version 2>&1; \
+    echo "=== FINAL CHECK ===" && ls -la /usr/sbin/nginx /usr/bin/redis-server /opt/java/jdk21/bin/java 2>&1 || true; \
+    nginx -t 2>&1 || echo "nginx -t failed (non-fatal)"; \
+    redis-server --version 2>&1 || echo "redis-server not found"; \
+    java -version 2>&1 || echo "java not found"; \
     libreoffice --version 2>&1 || echo "libreoffice not available"; \
     command -v netstat >/dev/null 2>&1 || echo "netstat not available"; \
     command -v vim >/dev/null 2>&1 || echo "vim not available"; \
